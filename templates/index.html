@@ -2,6 +2,10 @@
 <html>
 <head>
     <title>SOValidator Web</title>
+    <style>
+        pre { background: #f8f8f8; padding: 10px; border: 1px solid #ccc; }
+        .highlight { background-color: #ffdddd; font-weight: bold; }
+    </style>
 </head>
 <body>
     <h2>SOValidator – PDF XML XSD Prüfer</h2>
@@ -9,6 +13,24 @@
         <input type="file" name="pdf_file" accept=".pdf" required>
         <button type="submit">Hochladen & Prüfen</button>
     </form>
+
+    {% if filename %}
+        <p><strong>Datei:</strong> {{ filename }}</p>
+    {% endif %}
+
     <div style="margin-top:20px; color:darkred;">{{ result|safe }}</div>
+
+    {% if excerpt %}
+    <h4>🔍 XML-Ausschnitt:</h4>
+    <pre>
+{% for line in excerpt %}
+<span class="{{ 'highlight' if loop.index0 == highlight_line else '' }}">{{ line|e }}</span>
+{% endfor %}
+    </pre>
+    {% endif %}
+
+    {% if suggestion %}
+        <p style="color:darkgreen;">{{ suggestion }}</p>
+    {% endif %}
 </body>
 </html>
