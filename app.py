@@ -4,7 +4,15 @@ from lxml import etree
 import os
 
 app = Flask(__name__)
-XSD_PATH = os.path.join("factur-x-xsd", "FACTUR-X_EN16931.xsd")
+
+# XSD-Profile zuweisen
+XSD_MAP = {
+    "MINIMUM": "ZF232_DE/Schema/0. Factur-X_1.07.2_MINIMUM/Factur-X_1.07.2_MINIMUM.xsd",
+    "BASICWL": "ZF232_DE/Schema/1. Factur-X_1.07.2_BASICWL/Factur-X_1.07.2_BASICWL.xsd",
+    "BASIC": "ZF232_DE/Schema/2. Factur-X_1.07.2_BASIC/Factur-X_1.07.2_BASIC.xsd",
+    "EN16931": "ZF232_DE/Schema/3. Factur-X_1.07.2_EN16931/Factur-X_1.07.2_EN16931.xsd",
+    "EXTENDED": "ZF232_DE/Schema/4. Factur-X_1.07.2_EXTENDED/Factur-X_1.07.2_EXTENDED.xsd"
+}
 
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
@@ -48,9 +56,9 @@ def validate_xml(xml_content):
         excerpt, highlight_line = extract_code_context(xml_lines, line)
         return False, msg, excerpt, highlight_line
 
-def validate_against_xsd(xml_content):
+def validate_against_xsd(xml_content, xsd_path):
     try:
-        schema_doc = etree.parse(XSD_PATH)
+        schema_doc = etree.parse(xsd_path)
         schema = etree.XMLSchema(schema_doc)
         doc = etree.fromstring(xml_content.encode("utf-8"))
         schema.assertValid(doc)
@@ -64,8 +72,13 @@ def index():
     filename = ""
     excerpt = []
     highlight_line = None
-    suggestion = ""
+    suggestions = []
+    selected_profile = "EN16931"
+
     if request.method == "POST":
+        selected_profile = request.form.get("profile", "EN16931")
+        xsd_path = XSD_MAP.get(selected_profile, XSD_MAP["EN16931"])
+
         file = request.files["pdf_file"]
         if file:
             filename = file.filename
@@ -79,15 +92,16 @@ def index():
                 result = msg
                 if not valid:
                     if "not closed" in msg:
-                        suggestion = "💡 Vorschlag: Fehlender schließender Tag. Bitte prüfen Sie, ob z. B. ein </Tag> fehlt."
-                    elif "expected '>'" in msg:
-                        suggestion = "💡 Vorschlag: Tag nicht korrekt abgeschlossen. Möglicherweise fehlt ein >"
+                        suggestions.append("💡 Vorschlag: Fehlender schließender Tag. Bitte prüfen Sie, ob z. B. ein </Tag> fehlt.")
+                    if "expected '>'" in msg:
+                        suggestions.append("💡 Vorschlag: Tag nicht korrekt abgeschlossen. Möglicherweise fehlt ein >")
                 elif valid:
-                    xsd_ok, xsd_msg = validate_against_xsd(xml)
+                    xsd_ok, xsd_msg = validate_against_xsd(xml, xsd_path)
                     result += "<br>" + xsd_msg
                     if "Failed to parse QName" in xsd_msg:
-                        suggestion = "💡 Vorschlag: In diesem Feld ist ein Qualified Name (QName) erforderlich. Prüfen Sie, ob versehentlich ein URL-Wert wie 'https:' angegeben wurde."
-    return render_template("index.html", result=result, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion=suggestion)
+                        suggestions.append("💡 Vorschlag: In diesem Feld ist ein Qualified Name (QName) erforderlich. Prüfen Sie, ob versehentlich ein URL-Wert wie 'https:' angegeben wurde.")
+
+    return render_template("index.html", result=result, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion="<br>".join(suggestions), selected_profile=selected_profile)
 
 if __name__ == "__main__":
     app.run(debug=True)
