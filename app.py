@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 import fitz  # PyMuPDF
 from lxml import etree
 import os
+import re
 
 app = Flask(__name__)
 
@@ -58,6 +59,16 @@ def validate_xml(xml_content):
         excerpt, highlight_line = extract_code_context(xml_lines, line)
         return False, msg, excerpt, highlight_line
 
+def detect_nonstandard_tags(xml_content):
+    known_tags = {"ID", "Name", "CityName", "PostcodeCode", "LineOne", "StreetName", "Country", "URIID"}  # Beispielhafte erlaubte Tags
+    nonstandard = set()
+    tag_pattern = re.compile(r"<(/?)(ram:)(\w+)")
+    for match in tag_pattern.findall(xml_content):
+        tagname = match[2]
+        if tagname not in known_tags:
+            nonstandard.add(tagname)
+    return sorted(nonstandard)
+
 def validate_against_all_xsds(xml_content):
     results = []
     for xsd_path in list_all_xsd_files():
@@ -107,6 +118,11 @@ def index():
                     result += "<br>" + xsd_msg
                     if "Failed to parse QName" in xsd_msg:
                         suggestions.append("💡 Vorschlag: In diesem Feld ist ein Qualified Name (QName) erforderlich. Prüfen Sie, ob versehentlich ein URL-Wert wie 'https:' angegeben wurde.")
+                # Zusätzlich prüfen auf nicht-standardisierte Tags
+                nonstandard_tags = detect_nonstandard_tags(xml)
+                if nonstandard_tags:
+                    for tag in nonstandard_tags:
+                        suggestions.append(f"⚠️ Hinweis: Nicht-standardisiertes Tag erkannt: &lt;ram:{tag}&gt;. Dieses Tag ist möglicherweise nicht Teil des offiziellen Schemas.")
 
     return render_template("index.html", result=result, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion="<br>".join(suggestions))
 
