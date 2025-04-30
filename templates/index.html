@@ -1,1 +1,14 @@
-
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SOValidator Web</title>
+</head>
+<body>
+    <h2>SOValidator – PDF XML XSD Prüfer</h2>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="file" name="pdf_file" accept=".pdf" required>
+        <button type="submit">Hochladen & Prüfen</button>
+    </form>
+    <div style="margin-top:20px; color:darkred;">{{ result|safe }}</div>
+</body>
+</html>
