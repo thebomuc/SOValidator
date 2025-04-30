@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-import fitz
+import fitz  # PyMuPDF
 from lxml import etree
 import os
 
@@ -8,11 +8,27 @@ XSD_PATH = os.path.join("UBL-XSD", "UBL-Invoice-2.1.xsd")
 
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
+    print(f"\U0001f4e6 Anzahl eingebetteter Dateien: {doc.embfile_count()}")
+
     for i in range(doc.embfile_count()):
         info = doc.embfile_info(i)
-        if info['filename'].endswith('.xml'):
+        name = info.get("filename", "").lower()
+        print(f"\U0001f4c4 Gefunden: {name}")
+        if name.endswith(".xml"):
             xml_bytes = doc.embfile_get(i)
-            return xml_bytes.decode('utf-8')
+            try:
+                return xml_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                return xml_bytes.decode("latin1")
+
+    if doc.embfile_count() > 0:
+        print("⚠️ Keine Datei mit .xml-Endung – versuche erste eingebettete Datei")
+        xml_bytes = doc.embfile_get(0)
+        try:
+            return xml_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            return xml_bytes.decode("latin1")
+
     return None
 
 def extract_code_context(xml_lines, error_line, context=2):
@@ -61,11 +77,15 @@ def index():
             else:
                 valid, msg, excerpt, highlight_line = validate_xml(xml)
                 result = msg
-                if not valid and "not closed" in msg:
-                    suggestion = "💡 Vorschlag: Fehlender schließender Tag. Bitte prüfen Sie, ob z. B. ein </Tag> fehlt."
-                elif not valid and "expected '>'" in msg:
-                    suggestion = "💡 Vorschlag: Tag nicht korrekt abgeschlossen. Möglicherweise fehlt ein >"
+                if not valid:
+                    if "not closed" in msg:
+                        suggestion = "💡 Vorschlag: Fehlender schließender Tag. Bitte prüfen Sie, ob z. B. ein </Tag> fehlt."
+                    elif "expected '>'" in msg:
+                        suggestion = "💡 Vorschlag: Tag nicht korrekt abgeschlossen. Möglicherweise fehlt ein >"
                 elif valid:
                     xsd_ok, xsd_msg = validate_against_xsd(xml)
                     result += "<br>" + xsd_msg
     return render_template("index.html", result=result, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion=suggestion)
+
+if __name__ == "__main__":
+    app.run(debug=True)
