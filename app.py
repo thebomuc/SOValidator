@@ -5,14 +5,16 @@ import os
 
 app = Flask(__name__)
 
-# XSD-Profile zuweisen
-XSD_MAP = {
-    "MINIMUM": "ZF232_DE/Schema/0. Factur-X_1.07.2_MINIMUM/Factur-X_1.07.2_MINIMUM.xsd",
-    "BASICWL": "ZF232_DE/Schema/1. Factur-X_1.07.2_BASICWL/Factur-X_1.07.2_BASICWL.xsd",
-    "BASIC": "ZF232_DE/Schema/2. Factur-X_1.07.2_BASIC/Factur-X_1.07.2_BASIC.xsd",
-    "EN16931": "ZF232_DE/Schema/3. Factur-X_1.07.2_EN16931/Factur-X_1.07.2_EN16931.xsd",
-    "EXTENDED": "ZF232_DE/Schema/4. Factur-X_1.07.2_EXTENDED/Factur-X_1.07.2_EXTENDED.xsd"
-}
+XSD_ROOT = "ZF232_DE/Schema"
+
+# Liste aller verfügbaren .xsd-Dateien im Schema-Verzeichnis
+def list_all_xsd_files():
+    xsd_files = []
+    for root, _, files in os.walk(XSD_ROOT):
+        for file in files:
+            if file.endswith(".xsd"):
+                xsd_files.append(os.path.join(root, file))
+    return xsd_files
 
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
@@ -56,15 +58,18 @@ def validate_xml(xml_content):
         excerpt, highlight_line = extract_code_context(xml_lines, line)
         return False, msg, excerpt, highlight_line
 
-def validate_against_xsd(xml_content, xsd_path):
-    try:
-        schema_doc = etree.parse(xsd_path)
-        schema = etree.XMLSchema(schema_doc)
-        doc = etree.fromstring(xml_content.encode("utf-8"))
-        schema.assertValid(doc)
-        return True, "✔️ XML entspricht dem XSD."
-    except Exception as e:
-        return False, f"❌ XSD-Validierung fehlgeschlagen: {e}"
+def validate_against_all_xsds(xml_content):
+    results = []
+    for xsd_path in list_all_xsd_files():
+        try:
+            schema_doc = etree.parse(xsd_path)
+            schema = etree.XMLSchema(schema_doc)
+            doc = etree.fromstring(xml_content.encode("utf-8"))
+            schema.assertValid(doc)
+            return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
+        except Exception as e:
+            results.append(f"{os.path.basename(xsd_path)}: {e}")
+    return False, "❌ XSD-Validierung fehlgeschlagen:<br>" + "<br>".join(results[:3])  # max. 3 Fehler anzeigen
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -73,12 +78,8 @@ def index():
     excerpt = []
     highlight_line = None
     suggestions = []
-    selected_profile = "EN16931"
 
     if request.method == "POST":
-        selected_profile = request.form.get("profile", "EN16931")
-        xsd_path = XSD_MAP.get(selected_profile, XSD_MAP["EN16931"])
-
         file = request.files["pdf_file"]
         if file:
             filename = file.filename
@@ -96,12 +97,12 @@ def index():
                     if "expected '>'" in msg:
                         suggestions.append("💡 Vorschlag: Tag nicht korrekt abgeschlossen. Möglicherweise fehlt ein >")
                 elif valid:
-                    xsd_ok, xsd_msg = validate_against_xsd(xml, xsd_path)
+                    xsd_ok, xsd_msg = validate_against_all_xsds(xml)
                     result += "<br>" + xsd_msg
                     if "Failed to parse QName" in xsd_msg:
                         suggestions.append("💡 Vorschlag: In diesem Feld ist ein Qualified Name (QName) erforderlich. Prüfen Sie, ob versehentlich ein URL-Wert wie 'https:' angegeben wurde.")
 
-    return render_template("index.html", result=result, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion="<br>".join(suggestions), selected_profile=selected_profile)
+    return render_template("index.html", result=result, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion="<br>".join(suggestions))
 
 if __name__ == "__main__":
     app.run(debug=True)
