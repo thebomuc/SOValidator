@@ -14,20 +14,29 @@
         <button type="submit">Hochladen & Prüfen</button>
     </form>
 
-    {% if filename %}
-        <p><strong>Datei:</strong> {{ filename }}</p>
-    {% endif %}
+{% if filename %}
+    <p><strong>🗂️ Geprüfte Datei:</strong> {{ filename }}</p>
+{% endif %}
 
-    <div style="margin-top:20px; color:darkred;">{{ result|safe }}</div>
+<div style="margin-top:20px; color:darkred;">
+    {{ result|safe }}
+</div>
 
-    {% if excerpt %}
-    <h4>🔍 XML-Ausschnitt:</h4>
-    <pre>
+{% if excerpt %}
+    <h4>🔍 XML-Fehlerausschnitt:</h4>
+    <pre style="background:#f4f4f4; border:1px solid #ccc; padding:10px;">
 {% for line in excerpt %}
-<span class="{{ 'highlight' if loop.index0 == highlight_line else '' }}">{{ line|e }}</span>
+<span style="{% if loop.index0 == highlight_line %}background-color:#ffe6e6; font-weight:bold;{% endif %}">{{ line|e }}</span>
 {% endfor %}
     </pre>
-    {% endif %}
+{% endif %}
+
+{% if suggestion %}
+    <div style="margin-top:10px; padding:10px; border:1px solid #cfc; background:#f6fff6; color:#064d06;">
+        {{ suggestion }}
+    </div>
+{% endif %}
+
 
     {% if suggestion %}
         <p style="color:darkgreen;">{{ suggestion }}</p>
