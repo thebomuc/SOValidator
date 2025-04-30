@@ -1,17 +1,14 @@
-# SOValidator (Web-Version)
+# SOValidator Web (Erweiterte Version)
 
 ## Funktionen
-- Lädt eine PDF mit eingebetteter XML
-- Prüft XML-Syntax
-- Validiert gegen das UBL-Invoice-2.1.xsd Schema
+- Dateinamenanzeige
+- XML-Syntaxprüfung & XSD-Validierung
+- Fehlerausschnitt anzeigen
+- Automatische Korrekturhinweise
 
 ## Lokaler Start
-```
 pip install -r requirements.txt
 python app.py
-```
 
-## Deployment auf Render.com
-1. Neues Web Service erstellen
-2. Python 3 wählen
-3. Start-Kommando: `gunicorn app:app`
+## Render.com Deployment
+Start-Kommando: gunicorn app:app
