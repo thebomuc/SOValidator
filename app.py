@@ -67,9 +67,15 @@ def validate_against_all_xsds(xml_content):
             doc = etree.fromstring(xml_content.encode("utf-8"))
             schema.assertValid(doc)
             return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
+        except etree.DocumentInvalid as e:
+            errors = schema.error_log.filter_from_errors()
+            details = "".join([
+                f"<li>Zeile {err.line}: {err.message}</li>" for err in errors
+            ])
+            results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><ul>{details}</ul></details>")
         except Exception as e:
-            results.append(f"{os.path.basename(xsd_path)}: {e}")
-    return False, "❌ XSD-Validierung fehlgeschlagen:<br>" + "<br>".join(results[:3])  # max. 3 Fehler anzeigen
+            results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><pre>{e}</pre></details>")
+    return False, "❌ XSD-Validierung fehlgeschlagen:" + "<br>" + "<br>".join(results)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
