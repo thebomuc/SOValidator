@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>SOValidator Web</title>
+    <title>SOValidator – XML/XSD Validierung</title>
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; }
         pre { background: #f8f8f8; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
@@ -11,19 +11,12 @@
     </style>
 </head>
 <body>
-    <h2>SOValidator – PDF XML XSD Prüfer (Factur-X Profile)</h2>
+    <h2>SOValidator – PDF mit eingebetteter XML gegen Factur-X/XRechnung prüfen</h2>
+
     <form action="/" method="post" enctype="multipart/form-data">
-        <label for="profile">📋 Factur-X Profil:</label>
-        <select name="profile" id="profile">
-            <option value="EN16931" {% if selected_profile == 'EN16931' %}selected{% endif %}>EN16931 (Standard)</option>
-            <option value="BASIC" {% if selected_profile == 'BASIC' %}selected{% endif %}>BASIC</option>
-            <option value="BASICWL" {% if selected_profile == 'BASICWL' %}selected{% endif %}>BASIC WL</option>
-            <option value="MINIMUM" {% if selected_profile == 'MINIMUM' %}selected{% endif %}>MINIMUM</option>
-            <option value="EXTENDED" {% if selected_profile == 'EXTENDED' %}selected{% endif %}>EXTENDED</option>
-        </select>
-        <br><br>
+        <label for="pdf_file">📄 PDF-Datei mit eingebetteter XML hochladen:</label><br><br>
         <input type="file" name="pdf_file" accept=".pdf" required>
-        <button type="submit">Hochladen & Prüfen</button>
+        <button type="submit">Prüfen</button>
     </form>
 
     {% if filename %}
