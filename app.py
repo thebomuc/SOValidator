@@ -85,6 +85,8 @@ def index():
                 elif valid:
                     xsd_ok, xsd_msg = validate_against_xsd(xml)
                     result += "<br>" + xsd_msg
+                    if "Failed to parse QName" in xsd_msg:
+                        suggestion = "💡 Vorschlag: In diesem Feld ist ein Qualified Name (QName) erforderlich. Prüfen Sie, ob versehentlich ein URL-Wert wie 'https:' angegeben wurde."
     return render_template("index.html", result=result, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion=suggestion)
 
 if __name__ == "__main__":
