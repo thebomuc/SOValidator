@@ -1,10 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
+    <meta charset="UTF-8">
     <title>SOValidator Web</title>
     <style>
-        pre { background: #f8f8f8; padding: 10px; border: 1px solid #ccc; }
-        .highlight { background-color: #ffdddd; font-weight: bold; }
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        pre { background: #f8f8f8; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
+        .highlight { background-color: #ffe6e6; font-weight: bold; }
+        .suggestion { margin-top: 10px; padding: 10px; border: 1px solid #cfc; background: #f6fff6; color: #064d06; }
     </style>
 </head>
 <body>
@@ -14,32 +17,25 @@
         <button type="submit">Hochladen & Prüfen</button>
     </form>
 
-{% if filename %}
-    <p><strong>🗂️ Geprüfte Datei:</strong> {{ filename }}</p>
-{% endif %}
+    {% if filename %}
+        <p><strong>🗂️ Geprüfte Datei:</strong> {{ filename }}</p>
+    {% endif %}
 
-<div style="margin-top:20px; color:darkred;">
-    {{ result|safe }}
-</div>
-
-{% if excerpt %}
-    <h4>🔍 XML-Fehlerausschnitt:</h4>
-    <pre style="background:#f4f4f4; border:1px solid #ccc; padding:10px;">
-{% for line in excerpt %}
-<span style="{% if loop.index0 == highlight_line %}background-color:#ffe6e6; font-weight:bold;{% endif %}">{{ line|e }}</span>
-{% endfor %}
-    </pre>
-{% endif %}
-
-{% if suggestion %}
-    <div style="margin-top:10px; padding:10px; border:1px solid #cfc; background:#f6fff6; color:#064d06;">
-        {{ suggestion }}
+    <div style="margin-top:20px; color:darkred;">
+        {{ result|safe }}
     </div>
-{% endif %}
 
+    {% if excerpt %}
+        <h4>🔍 XML-Fehlerausschnitt:</h4>
+        <pre>
+{% for line in excerpt %}
+<span class="{{ 'highlight' if loop.index0 == highlight_line else '' }}">{{ line|e }}</span>
+{% endfor %}
+        </pre>
+    {% endif %}
 
     {% if suggestion %}
-        <p style="color:darkgreen;">{{ suggestion }}</p>
+        <div class="suggestion">{{ suggestion|safe }}</div>
     {% endif %}
 </body>
 </html>
