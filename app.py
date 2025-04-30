@@ -4,7 +4,7 @@ from lxml import etree
 import os
 
 app = Flask(__name__)
-XSD_PATH = os.path.join("UBL-XSD", "UBL-Invoice-2.1.xsd")
+XSD_PATH = os.path.join("factur-x-xsd", "FACTUR-X_EN16931.xsd")
 
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
