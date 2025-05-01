@@ -2,42 +2,41 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>SOValidator – XML/XSD Validierung</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        pre { background: #f8f8f8; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
-        .highlight { background-color: #ffe6e6; font-weight: bold; }
-        .suggestion { margin-top: 10px; padding: 10px; border: 1px solid #cfc; background: #f6fff6; color: #064d06; }
-    </style>
+    <title>SOValidator</title>
 </head>
 <body>
-    <h2>SOValidator – PDF mit eingebetteter XML gegen Factur-X/XRechnung prüfen</h2>
+    <h1>SOValidator – PDF/XML-Validierung</h1>
 
-    <form action="/" method="post" enctype="multipart/form-data">
-        <label for="pdf_file">📄 PDF-Datei mit eingebetteter XML hochladen:</label><br><br>
+    <form method="POST" enctype="multipart/form-data">
+        <label for="pdf_file">PDF-Datei mit eingebetteter XML wählen:</label><br><br>
         <input type="file" name="pdf_file" accept=".pdf" required>
         <button type="submit">Prüfen</button>
     </form>
 
     {% if filename %}
-        <p><strong>🗂️ Geprüfte Datei:</strong> {{ filename }}</p>
+        <h3>📄 Datei: {{ filename }}</h3>
     {% endif %}
 
-    <div style="margin-top:20px; color:darkred;">
-        {{ result|safe }}
-    </div>
+    {% if result %}
+        <div style="margin-top: 1em;">
+            {{ result|safe }}
+        </div>
+    {% endif %}
 
     {% if excerpt %}
-        <h4>🔍 XML-Fehlerausschnitt:</h4>
-        <pre>
-{% for line in excerpt %}
-<span class="{{ 'highlight' if loop.index0 == highlight_line else '' }}">{{ line|e }}</span>
+        <h4>🔍 XML-Auszug:</h4>
+        <pre style="background-color: #f8f8f8; padding: 1em; border: 1px solid #ccc;">
+{% for i, line in enumerate(excerpt) %}
+<span {% if i == highlight_line %}style="background-color:#ffeeee;"{% endif %}>{{ line|safe }}</span>
 {% endfor %}
         </pre>
     {% endif %}
 
     {% if suggestion %}
-        <div class="suggestion">{{ suggestion|safe }}</div>
+        <h4>💡 Hinweise:</h4>
+        <div style="background-color:#f9f9f9; padding:0.8em; border:1px dashed #aaa;">
+            {{ suggestion|safe }}
+        </div>
     {% endif %}
 </body>
 </html>
