@@ -123,17 +123,6 @@ except Exception as e:
     print("⚠️ Fehler beim Vorladen der Codelisten:", e)
 
 @app.route("/", methods=["GET", "POST"])
-EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
-codelists = {
-    "Currency": "Alphabetic Code",
-    "Country": "Alpha-2 code",
-    "5305": "Code",
-    "VATEX": "CODE",
-    "1153": "Code Values",
-    "1001": "Code",
-    "Allowance": "Code",
-    "Charge": "Code",
-}
 code_sets = {}
 try:
     for sheet, column in codelists.items():
