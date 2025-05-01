@@ -100,8 +100,6 @@ def validate_with_schematron(xml_content, xslt_path):
         return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
 
 
-@app.route("/", methods=["GET", "POST"])
-# Codelisten einmalig beim Start laden
 import pandas as pd
 from openpyxl import load_workbook
 
@@ -124,14 +122,27 @@ try:
 except Exception as e:
     print("⚠️ Fehler beim Vorladen der Codelisten:", e)
 
+@app.route("/", methods=["GET", "POST"])
+EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
+codelists = {
+    "Currency": "Alphabetic Code",
+    "Country": "Alpha-2 code",
+    "5305": "Code",
+    "VATEX": "CODE",
+    "1153": "Code Values",
+    "1001": "Code",
+    "Allowance": "Code",
+    "Charge": "Code",
+}
+code_sets = {}
+try:
+    for sheet, column in codelists.items():
+        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
+        code_sets[sheet] = set(df[column].dropna().astype(str).str.strip().unique())
+except Exception as e:
+    print("⚠️ Fehler beim Vorladen der Codelisten:", e)
+
 def index():
-    
-    try:
-        for sheet, column in codelists.items():
-            df = pd.read_excel(excel_path, sheet_name=sheet, engine="openpyxl")
-            code_sets[sheet] = set(df[column].dropna().astype(str).str.strip().unique())
-    except Exception as e:
-        print("⚠️ Fehler beim Laden der Codelisten:", e)
     result = ""
     filename = ""
     excerpt = []  # wird ggf. später mit markierten Zeilen überschrieben
