@@ -138,7 +138,7 @@ def index():
             file_path = "uploaded.pdf"
             file.save(file_path)
             xml = extract_xml_from_pdf(file_path)
-                try:
+            try:
                     from xml.dom import minidom
                     xml = minidom.parseString(xml.encode("utf-8")).toprettyxml()
                 except Exception as e:
