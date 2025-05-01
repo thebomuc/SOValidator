@@ -179,15 +179,16 @@ def index():
                         if match.strip() not in allowed_set:
                             suggestions.append(f"❌ Ungültiger {label}: {match.strip()} ist nicht in der offiziellen Codeliste enthalten.")
                             # Markierung im XML-Quelltext (für Anzeige)
-                            highlight_tag = f">{match.strip()}<"
                             xml_lines = xml.splitlines()
-                            for i, line in enumerate(xml_lines):
-                                if highlight_tag in line:
-                                    excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
-                                    # Färbe den betroffenen Wert im XML-Auszug rot ein
-                                    excerpt[highlight_line] = excerpt[highlight_line].replace(match.strip(), f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>")
-                                    break
-
+                                for i, line in enumerate(xml_lines):
+                                    if match.strip() in line:
+                                        excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
+                                        excerpt[highlight_line] = re.sub(
+                                                rf"\b{re.escape(match.strip())}\b",
+                                                f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>",
+                                        excerpt[highlight_line]
+                                    )
+                                break
                 if request.form.get("nonstandard") and nonstandard_tags:
                     for tag in nonstandard_tags:
                         suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
