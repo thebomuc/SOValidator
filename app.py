@@ -11,7 +11,6 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
 DEFAULT_XSD_ROOT = "ZF232_DE/Schema"
 DEFAULT_XSLT_PATH = "EN16931-CII-validation.xslt"
 
-
 def list_all_xsd_files(schema_root):
     xsd_files = []
     for root, _, files in os.walk(schema_root):
@@ -99,7 +98,6 @@ def validate_with_schematron(xml_content, xslt_path):
     except Exception as e:
         return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
 
-
 import pandas as pd
 from openpyxl import load_workbook
 
@@ -126,7 +124,7 @@ except Exception as e:
 def index():
     result = ""
     filename = ""
-    excerpt = []  # wird ggf. später mit markierten Zeilen überschrieben
+    excerpt = []
     highlight_line = None
     suggestions = []
 
@@ -162,7 +160,6 @@ def index():
                         for msg in sch_issues:
                             suggestions.append(f"❌ {msg}")
                 nonstandard_tags = detect_nonstandard_tags(xml)
-                # Codelistenprüfung ausführen
                 codelist_checks = [
                     (r"<ram:CurrencyCode>(.*?)</ram:CurrencyCode>", code_sets.get("Currency", set()), "CurrencyCode"),
                     (r"<ram:CountryID>(.*?)</ram:CountryID>", code_sets.get("Country", set()), "CountryID"),
@@ -181,13 +178,11 @@ def index():
                             for i, line in enumerate(xml_lines):
                                 if match.strip() in line:
                                     excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
-                                    excerpt[highlight_line] = re.sub(
-                                        rf"\b{re.escape(match.strip())}\b"
-                                        f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>",
-                                        excerpt[highlight_line]
+                                    excerpt[highlight_line] = excerpt[highlight_line].replace(
+                                        match.strip(),
+                                        f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>"
                                     )
                                     break
-
                 if request.form.get("nonstandard") and nonstandard_tags:
                     for tag in nonstandard_tags:
                         suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
