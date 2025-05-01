@@ -73,10 +73,7 @@ def validate_against_all_xsds(xml_content, schema_root):
         try:
             schema_doc = etree.parse(xsd_path)
             schema = etree.XMLSchema(schema_doc)
-            if 'cached_etree' not in globals():
-                global cached_etree
-                cached_etree = etree.fromstring(xml_content.encode("utf-8"))
-            doc = cached_etree
+            doc = etree.fromstring(xml_content.encode("utf-8"))
             schema.assertValid(doc)
             return True, f"<span style='color:black'>✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)}).</span>"
         except etree.DocumentInvalid as e:
@@ -86,39 +83,6 @@ def validate_against_all_xsds(xml_content, schema_root):
         except Exception as e:
             results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><pre>{e}</pre></details>")
     return False, "❌ XSD-Validierung fehlgeschlagen:" + "<br>" + "<br>".join(results)
-
-def validate_with_schematron(xml_content, xslt_path):
-    try:
-        xml_doc = etree.fromstring(xml_content.encode("utf-8"))
-        xslt_doc = etree.parse(xslt_path)
-        transform = etree.XSLT(xslt_doc)
-        svrl = transform(xml_doc)
-        failed = svrl.xpath("//svrl:failed-assert", namespaces={"svrl": "http://purl.oclc.org/dsdl/svrl"})
-        return [fa.find("svrl:text", namespaces={"svrl": "http://purl.oclc.org/dsdl/svrl"}).text for fa in failed]
-    except Exception as e:
-        return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
-
-import pandas as pd
-from openpyxl import load_workbook
-
-EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
-codelists = {
-    "Currency": "Alphabetic Code",
-    "Country": "Alpha-2 code",
-    "5305": "Code",
-    "VATEX": "CODE",
-    "1153": "Code Values",
-    "1001": "Code",
-    "Allowance": "Code",
-    "Charge": "Code",
-}
-code_sets = {}
-try:
-    for sheet, column in codelists.items():
-        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
-        code_sets[sheet] = set(df[column].dropna().astype(str).str.strip().unique())
-except Exception as e:
-    print("⚠️ Fehler beim Vorladen der Codelisten:", e)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -135,12 +99,6 @@ def index():
             file_path = "uploaded.pdf"
             file.save(file_path)
             xml = extract_xml_from_pdf(file_path)
-            try:
-                from xml.dom import minidom
-                xml_dom = minidom.parseString(xml.encode("utf-8"))
-                xml = xml_dom.toprettyxml(indent="    ")
-            except Exception as e:
-                print("⚠️ XML-Formatierung nicht möglich:", e)
             if not xml:
                 result = "❌ Keine XML-Datei in der PDF gefunden."
             else:
@@ -154,43 +112,6 @@ def index():
                 elif valid:
                     xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
                     result += "<br><span style='color:darkorange'>" + xsd_msg + "</span>"
-                    if "Failed to parse QName" in xsd_msg:
-                        suggestions.append("💡 Vorschlag: In diesem Feld ist ein Qualified Name (QName) erforderlich. Prüfen Sie, ob versehentlich ein URL-Wert wie 'https:' angegeben wurde.")
-                    if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
-                        sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
-                        for msg in sch_issues:
-                            suggestions.append(f"❌ {msg}")
-                nonstandard_tags = detect_nonstandard_tags(xml)
-                codelist_checks = [
-                    (r"<ram:CurrencyCode>(.*?)</ram:CurrencyCode>", code_sets.get("Currency", set()), "CurrencyCode"),
-                    (r"<ram:CountryID>(.*?)</ram:CountryID>", code_sets.get("Country", set()), "CountryID"),
-                    (r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", code_sets.get("5305", set()), "CategoryCode"),
-                    (r"<ram:TaxExemptionReasonCode>(.*?)</ram:TaxExemptionReasonCode>", code_sets.get("VATEX", set()), "VATEX"),
-                    (r"<ram:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>", code_sets.get("1001", set()), "DocumentType (1001)"),
-                    (r"<ram:FunctionCode>(.*?)</ram:FunctionCode>", code_sets.get("1153", set()), "FunctionCode (1153)"),
-                    (r"<ram:AllowanceReasonCode>(.*?)</ram:AllowanceReasonCode>", code_sets.get("Allowance", set()), "AllowanceReasonCode"),
-                    (r"<ram:ChargeReasonCode>(.*?)</ram:ChargeReasonCode>", code_sets.get("Charge", set()), "ChargeReasonCode"),
-                ]
-                xml_lines = xml.splitlines()
-                for pattern, allowed_set, label in codelist_checks:
-                    for match in re.findall(pattern, xml):
-                        if match.strip() not in allowed_set:
-                            suggestions.append(f"❌ Ungültiger {label}: {match.strip()} ist nicht in der offiziellen Codeliste enthalten.")
-                            for i, line in enumerate(xml_lines):
-                                if match.strip() in line:
-                                    excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
-                                    if 0 <= highlight_line < len(excerpt):
-                                        excerpt[highlight_line] = re.sub(
-                                            re.escape(match.strip()),
-                                            f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>",
-                                            excerpt[highlight_line]
-                                        )
-                                    break
-                if request.form.get("nonstandard") and nonstandard_tags:
-                    for tag in nonstandard_tags:
-                        suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
-
-    suggestions.append("ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'.")
     legend = """<div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
 <span style='color:red;font-weight:bold'>Rot:</span> Alle Fehler und Verstöße<br>
