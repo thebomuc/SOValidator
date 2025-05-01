@@ -61,7 +61,7 @@ def validate_xml(xml_content):
 def detect_nonstandard_tags(xml_content):
     known_tags = {"ID", "Name", "CityName", "PostcodeCode", "LineOne", "StreetName", "Country", "URIID"}
     nonstandard = set()
-    tag_pattern = re.compile(r"<(/?)(ram:)(\w+)")
+    tag_pattern = re.compile(r"<(/?)(ram:)(\\w+)")
     for match in tag_pattern.findall(xml_content):
         tagname = match[2]
         if tagname not in known_tags:
@@ -123,7 +123,6 @@ except Exception as e:
     print("⚠️ Fehler beim Vorladen der Codelisten:", e)
 
 @app.route("/", methods=["GET", "POST"])
-
 def index():
     result = ""
     filename = ""
@@ -178,20 +177,21 @@ def index():
                     for match in re.findall(pattern, xml):
                         if match.strip() not in allowed_set:
                             suggestions.append(f"❌ Ungültiger {label}: {match.strip()} ist nicht in der offiziellen Codeliste enthalten.")
-                            # Markierung im XML-Quelltext (für Anzeige)
-                            highlight_tag = f">{match.strip()}<"
                             xml_lines = xml.splitlines()
-                                            for i, line in enumerate(xml_lines):
-                                if highlight_tag in line:
+                            for i, line in enumerate(xml_lines):
+                                if match.strip() in line:
                                     excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
-                                    # Färbe den betroffenen Wert im XML-Auszug rot ein
-                                    excerpt[highlight_line] = excerpt[highlight_line].replace(match.strip(), f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>")
+                                    excerpt[highlight_line] = re.sub(
+                                        rf"\\b{re.escape(match.strip())}\\b",
+                                        f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>",
+                                        excerpt[highlight_line]
+                                    )
                                     break
 
                 if request.form.get("nonstandard") and nonstandard_tags:
                     for tag in nonstandard_tags:
                         suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
-                
+
     suggestions.append("ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'.")
     legend = """<div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
