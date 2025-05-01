@@ -140,8 +140,8 @@ def index():
             xml = extract_xml_from_pdf(file_path)
             try:
                 from xml.dom import minidom
-                    xml = minidom.parseString(xml.encode("utf-8")).toprettyxml()
-                except Exception as e:
+                xml = minidom.parseString(xml.encode("utf-8")).toprettyxml()
+            except Exception as e:
                 print("⚠️ XML-Formatierung nicht möglich:", e)
             if not xml:
                 result = "❌ Keine XML-Datei in der PDF gefunden."
