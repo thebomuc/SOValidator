@@ -26,11 +26,12 @@
 
     {% if excerpt %}
         <h4>🔍 XML-Auszug:</h4>
-        <pre style="background-color: #f8f8f8; padding: 1em; border: 1px solid #ccc;">
+    <div style="background-color: #f8f8f8; padding: 1em; border: 1px solid #ccc; font-family: monospace; white-space: pre-wrap;">
 {% for line in excerpt %}
 <span {% if loop.index0 == highlight_line %}style="background-color:#ffeeee;"{% endif %}>{{ line|safe }}</span>
 {% endfor %}
-        </pre>
+</div>
+
     {% endif %}
 
     {% if suggestion %}
