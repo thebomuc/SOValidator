@@ -153,10 +153,10 @@ def index():
                     result += "<br><span style='color:darkorange'>" + xsd_msg + "</span>"
                     if "Failed to parse QName" in xsd_msg:
                         suggestions.append("💡 Vorschlag: In diesem Feld ist ein Qualified Name (QName) erforderlich. Prüfen Sie, ob versehentlich ein URL-Wert wie 'https:' angegeben wurde.")
-                    if os.path.exists(DEFAULT_XSLT_PATH):
+                    if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
                         sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
                         for msg in sch_issues:
-                            suggestions.append(f"🧾 Schematron: <span style='color:blue;font-weight:bold'>{msg}</span>")
+                            suggestions.append(f"❌ {msg}")
                 nonstandard_tags = detect_nonstandard_tags(xml)
                 # Codelistenprüfung ausführen
                 codelist_checks = [
@@ -164,7 +164,7 @@ def index():
                     (r"<ram:CountryID>(.*?)</ram:CountryID>", code_sets.get("Country", set()), "CountryID"),
                     (r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", code_sets.get("5305", set()), "CategoryCode"),
                     (r"<ram:TaxExemptionReasonCode>(.*?)</ram:TaxExemptionReasonCode>", code_sets.get("VATEX", set()), "VATEX"),
-                    (r"<ram:TypeCode>(.*?)</ram:TypeCode>", code_sets.get("1001", set()), "DocumentType (1001)"),
+                    (r"<ram:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>", code_sets.get("1001", set()), "DocumentType (1001)"),
                     (r"<ram:FunctionCode>(.*?)</ram:FunctionCode>", code_sets.get("1153", set()), "FunctionCode (1153)"),
                     (r"<ram:AllowanceReasonCode>(.*?)</ram:AllowanceReasonCode>", code_sets.get("Allowance", set()), "AllowanceReasonCode"),
                     (r"<ram:ChargeReasonCode>(.*?)</ram:ChargeReasonCode>", code_sets.get("Charge", set()), "ChargeReasonCode"),
@@ -180,20 +180,17 @@ def index():
                                 if highlight_tag in line:
                                     excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
                                     # Färbe den betroffenen Wert im XML-Auszug rot ein
-                                    excerpt[highlight_line] = excerpt[highlight_line].replace(match.strip(), f"<span style='color:red;font-weight:bold'>{match.strip()}</span>")
+                                    excerpt[highlight_line] = excerpt[highlight_line].replace(match.strip(), f"<span style='color:red;font-weight:bold;text-decoration:underline'>{match.strip()}</span>")
                                     break
 
-                if nonstandard_tags:
+                if request.form.get("nonstandard") and nonstandard_tags:
                     for tag in nonstandard_tags:
-                        suggestions.append(f"⚠️ Hinweis: Nicht-standardisiertes Tag erkannt: &lt;ram:{tag}&gt;. Dieses Tag ist möglicherweise nicht Teil des offiziellen Schemas.")
+                        suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
                 
     suggestions.append("ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'.")
     legend = """<div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
-<span style='color:red;font-weight:bold'>Rot:</span> Ungültiger Codewert laut Codeliste<br>
-<span style='color:blue;font-weight:bold'>Blau:</span> Verstoß gegen EN16931-Regel (Schematron)<br>
-<span style='color:orange;font-weight:bold'>Orange:</span> XML-Syntaxfehler<br>
-<span style='color:darkorange'>Dunkelorange:</span> XSD-Fehler<br>
+<span style='color:red;font-weight:bold'>Rot:</span> Alle Fehler und Verstöße<br>
 </div>"""
     return render_template("index.html", result=result + legend, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion="<br>".join(suggestions))
 
