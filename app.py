@@ -123,13 +123,6 @@ except Exception as e:
     print("⚠️ Fehler beim Vorladen der Codelisten:", e)
 
 @app.route("/", methods=["GET", "POST"])
-code_sets = {}
-try:
-    for sheet, column in codelists.items():
-        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
-        code_sets[sheet] = set(df[column].dropna().astype(str).str.strip().unique())
-except Exception as e:
-    print("⚠️ Fehler beim Vorladen der Codelisten:", e)
 
 def index():
     result = ""
