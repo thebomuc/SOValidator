@@ -185,7 +185,7 @@ def index():
                                 if highlight_tag in line:
                                     excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
                                     # Färbe den betroffenen Wert im XML-Auszug rot ein
-                                    excerpt[highlight_line] = excerpt[highlight_line].replace(match.strip(), f"<span style='color:red;font-weight:bold;text-decoration:underline'>{match.strip()}</span>")
+                                    excerpt[highlight_line] = excerpt[highlight_line].replace(match.strip(), f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>")
                                     break
 
                 if request.form.get("nonstandard") and nonstandard_tags:
