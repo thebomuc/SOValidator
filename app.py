@@ -50,7 +50,7 @@ def extract_code_context(xml_lines, error_line, context=2):
 def validate_xml(xml_content):
     try:
         etree.fromstring(xml_content.encode("utf-8"))
-        return True, "✔️ XML ist wohlgeformt.", None, None
+        return True, "<span style='color:black'>✔️ XML ist wohlgeformt.</span>", None, None
     except etree.XMLSyntaxError as e:
         msg = str(e)
         line = e.position[0]
@@ -79,7 +79,7 @@ def validate_against_all_xsds(xml_content, schema_root):
                 cached_etree = etree.fromstring(xml_content.encode("utf-8"))
             doc = cached_etree
             schema.assertValid(doc)
-            return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
+            return True, f"<span style='color:black'>✔️ XML entspricht dem XSD ({{os.path.basename(xsd_path)}}).</span>"
         except etree.DocumentInvalid as e:
             errors = schema.error_log.filter_from_errors()
             details = "".join([f"<li>Zeile {err.line}: {err.message}</li>" for err in errors])
@@ -138,6 +138,11 @@ def index():
             file_path = "uploaded.pdf"
             file.save(file_path)
             xml = extract_xml_from_pdf(file_path)
+                try:
+                    from xml.dom import minidom
+                    xml = minidom.parseString(xml.encode("utf-8")).toprettyxml()
+                except Exception as e:
+                    print("⚠️ XML-Formatierung nicht möglich:", e)
             if not xml:
                 result = "❌ Keine XML-Datei in der PDF gefunden."
             else:
