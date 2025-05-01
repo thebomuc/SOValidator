@@ -8,7 +8,9 @@
     <h1>SOValidator – PDF/XML-Validierung</h1>
     <form method="POST" enctype="multipart/form-data">
         <label for="pdf_file">PDF-Datei mit eingebetteter XML wählen:</label><br><br>
-        <input type="file" name="pdf_file" accept=".pdf" required>
+        <input type="file" name="pdf_file" accept=".pdf" required><br><br>
+        <label><input type="checkbox" name="schematron"> Schematron-Regeln prüfen</label><br>
+        <label><input type="checkbox" name="nonstandard"> Tags prüfen, die nicht in verwendeter XSD enthalten sind (z.B. Factur-X_1.07.2_EXTENDED.xsd)</label><br><br>
         <button type="submit">Prüfen</button>
     </form>
 
