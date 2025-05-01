@@ -79,7 +79,7 @@ def validate_against_all_xsds(xml_content, schema_root):
                 cached_etree = etree.fromstring(xml_content.encode("utf-8"))
             doc = cached_etree
             schema.assertValid(doc)
-            return True, f"<span style='color:black'>✔️ XML entspricht dem XSD ({{os.path.basename(xsd_path)}}).</span>"
+            return True, f"<span style='color:black'>✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)}).</span>"
         except etree.DocumentInvalid as e:
             errors = schema.error_log.filter_from_errors()
             details = "".join([f"<li>Zeile {err.line}: {err.message}</li>" for err in errors])
