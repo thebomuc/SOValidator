@@ -60,9 +60,9 @@ def validate_xml(xml_content):
 def detect_nonstandard_tags(xml_content):
     known_tags = {"ID", "Name", "CityName", "PostcodeCode", "LineOne", "StreetName", "Country", "URIID"}
     nonstandard = set()
-    tag_pattern = re.compile(r"<(/?)(ram:)(\\w+)")
+    tag_pattern = re.compile(r"<(/?)ram:(\w+)")
     for match in tag_pattern.findall(xml_content):
-        tagname = match[2]
+        tagname = match[1]
         if tagname not in known_tags:
             nonstandard.add(tagname)
     return sorted(nonstandard)
@@ -137,7 +137,8 @@ def index():
             xml = extract_xml_from_pdf(file_path)
             try:
                 from xml.dom import minidom
-                xml = minidom.parseString(xml.encode("utf-8")).toprettyxml()
+                xml_dom = minidom.parseString(xml.encode("utf-8"))
+                xml = xml_dom.toprettyxml(indent="    ")
             except Exception as e:
                 print("⚠️ XML-Formatierung nicht möglich:", e)
             if not xml:
@@ -179,9 +180,10 @@ def index():
                                 if match.strip() in line:
                                     excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
                                     if 0 <= highlight_line < len(excerpt):
-                                        excerpt[highlight_line] = excerpt[highlight_line].replace(
-                                            match.strip(),
-                                            f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>"
+                                        excerpt[highlight_line] = re.sub(
+                                            re.escape(match.strip()),
+                                            f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>",
+                                            excerpt[highlight_line]
                                         )
                                     break
                 if request.form.get("nonstandard") and nonstandard_tags:
