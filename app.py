@@ -182,7 +182,7 @@ def index():
                                 if match.strip() in line:
                                     excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
                                     excerpt[highlight_line] = re.sub(
-                                        rf"\\b{re.escape(match.strip())}\\b",
+                                        rf"\b{re.escape(match.strip())}\b"
                                         f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>",
                                         excerpt[highlight_line]
                                     )
