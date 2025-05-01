@@ -5,6 +5,7 @@ import os
 import re
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
 
 # Feste XSD/XSLT-Pfade
 DEFAULT_XSD_ROOT = "ZF232_DE/Schema"
@@ -43,12 +44,7 @@ def extract_xml_from_pdf(pdf_path):
 def extract_code_context(xml_lines, error_line, context=2):
     start = max(0, error_line - context - 1)
     end = min(len(xml_lines), error_line + context)
-    from xml.dom import minidom
-    # ...
-    pretty_xml = minidom.parseString(xml_content).toprettyxml()
-    xml_lines = pretty_xml.splitlines()
     excerpt = xml_lines[start:end]
-
     return excerpt, error_line - start - 1
 
 def validate_xml(xml_content):
@@ -78,7 +74,10 @@ def validate_against_all_xsds(xml_content, schema_root):
         try:
             schema_doc = etree.parse(xsd_path)
             schema = etree.XMLSchema(schema_doc)
-            doc = etree.fromstring(xml_content.encode("utf-8"))
+            if 'cached_etree' not in globals():
+                global cached_etree
+                cached_etree = etree.fromstring(xml_content.encode("utf-8"))
+            doc = cached_etree
             schema.assertValid(doc)
             return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
         except etree.DocumentInvalid as e:
@@ -102,23 +101,31 @@ def validate_with_schematron(xml_content, xslt_path):
 
 
 @app.route("/", methods=["GET", "POST"])
-def index():
-    from openpyxl import load_workbook
-    import pandas as pd
+# Codelisten einmalig beim Start laden
+import pandas as pd
+from openpyxl import load_workbook
 
-    # Pfad zur Excel-Datei im Projektverzeichnis (muss in Render vorhanden sein)
-    excel_path = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
-    codelists = {
-        "Currency": "Alphabetic Code",
-        "Country": "Alpha-2 code",
-        "5305": "Code",
-        "VATEX": "CODE",
-        "1153": "Code Values",
-        "1001": "Code",
-        "Allowance": "Code",
-        "Charge": "Code",
-    }
-    code_sets = {}
+EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
+codelists = {
+    "Currency": "Alphabetic Code",
+    "Country": "Alpha-2 code",
+    "5305": "Code",
+    "VATEX": "CODE",
+    "1153": "Code Values",
+    "1001": "Code",
+    "Allowance": "Code",
+    "Charge": "Code",
+}
+code_sets = {}
+try:
+    for sheet, column in codelists.items():
+        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
+        code_sets[sheet] = set(df[column].dropna().astype(str).str.strip().unique())
+except Exception as e:
+    print("⚠️ Fehler beim Vorladen der Codelisten:", e)
+
+def index():
+    
     try:
         for sheet, column in codelists.items():
             df = pd.read_excel(excel_path, sheet_name=sheet, engine="openpyxl")
@@ -198,6 +205,5 @@ def index():
     return render_template("index.html", result=result + legend, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion="<br>".join(suggestions))
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
