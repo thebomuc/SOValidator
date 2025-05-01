@@ -170,18 +170,19 @@ def index():
                     (r"<ram:AllowanceReasonCode>(.*?)</ram:AllowanceReasonCode>", code_sets.get("Allowance", set()), "AllowanceReasonCode"),
                     (r"<ram:ChargeReasonCode>(.*?)</ram:ChargeReasonCode>", code_sets.get("Charge", set()), "ChargeReasonCode"),
                 ]
+                xml_lines = xml.splitlines()
                 for pattern, allowed_set, label in codelist_checks:
                     for match in re.findall(pattern, xml):
                         if match.strip() not in allowed_set:
                             suggestions.append(f"❌ Ungültiger {label}: {match.strip()} ist nicht in der offiziellen Codeliste enthalten.")
-                            xml_lines = xml.splitlines()
                             for i, line in enumerate(xml_lines):
                                 if match.strip() in line:
                                     excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
-                                    excerpt[highlight_line] = excerpt[highlight_line].replace(
-                                        match.strip(),
-                                        f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>"
-                                    )
+                                    if 0 <= highlight_line < len(excerpt):
+                                        excerpt[highlight_line] = excerpt[highlight_line].replace(
+                                            match.strip(),
+                                            f"<strong>[<span style='color:red;font-weight:bold'>{match.strip()}</span>]</strong>"
+                                        )
                                     break
                 if request.form.get("nonstandard") and nonstandard_tags:
                     for tag in nonstandard_tags:
