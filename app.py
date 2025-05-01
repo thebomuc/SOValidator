@@ -43,7 +43,12 @@ def extract_xml_from_pdf(pdf_path):
 def extract_code_context(xml_lines, error_line, context=2):
     start = max(0, error_line - context - 1)
     end = min(len(xml_lines), error_line + context)
+    from xml.dom import minidom
+    # ...
+    pretty_xml = minidom.parseString(xml_content).toprettyxml()
+    xml_lines = pretty_xml.splitlines()
     excerpt = xml_lines[start:end]
+
     return excerpt, error_line - start - 1
 
 def validate_xml(xml_content):
