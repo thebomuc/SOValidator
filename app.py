@@ -46,6 +46,10 @@ def extract_code_context(xml_lines, error_line, context=2):
     excerpt = xml_lines[start:end]
     return excerpt, error_line - start - 1
 
+def extract_guideline_id(xml_content):
+    match = re.search(r"<ram:GuidelineSpecifiedDocumentContextParameter>\s*<ram:ID>(.*?)</ram:ID>", xml_content)
+    return match.group(1) if match else "unbekannt"
+
 def validate_xml(xml_content):
     try:
         etree.fromstring(xml_content.encode("utf-8"))
@@ -115,7 +119,8 @@ def index():
                 result = "❌ Keine XML-Datei in der PDF gefunden."
             else:
                 valid, msg, excerpt, highlight_line = validate_xml(xml)
-                result = msg
+                guideline_id = extract_guideline_id(xml)
+                result = msg + f"<br>📋 Guideline-Profil: {guideline_id}"
                 if not valid:
                     if "not closed" in msg:
                         suggestions.append("💡 Vorschlag: Fehlender schließender Tag. Bitte prüfen Sie, ob z. B. ein </Tag> fehlt.")
