@@ -6,7 +6,6 @@
 </head>
 <body>
     <h1>SOValidator – PDF/XML-Validierung</h1>
-
     <form method="POST" enctype="multipart/form-data">
         <label for="pdf_file">PDF-Datei mit eingebetteter XML wählen:</label><br><br>
         <input type="file" name="pdf_file" accept=".pdf" required>
@@ -26,8 +25,8 @@
     {% if excerpt %}
         <h4>🔍 XML-Auszug:</h4>
         <pre style="background-color: #f8f8f8; padding: 1em; border: 1px solid #ccc;">
-{% for i, line in enumerate(excerpt) %}
-<span {% if i == highlight_line %}style="background-color:#ffeeee;"{% endif %}>{{ line|safe }}</span>
+{% for line in excerpt %}
+<span {% if loop.index0 == highlight_line %}style="background-color:#ffeeee;"{% endif %}>{{ line|safe }}</span>
 {% endfor %}
         </pre>
     {% endif %}
