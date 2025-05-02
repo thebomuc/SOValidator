@@ -113,25 +113,21 @@ def detect_nonstandard_tags(xml_content):
     return sorted(nonstandard)
 
 
-def validate_against_all_xsds(xml_content, schema_root):
-    results = []
-    for xsd_path in list_all_xsd_files(schema_root):
+def validate_against_selected_xsds(xml_content, selected_schemas):
+    valid_schemas = []
+    invalid_schemas = []
+    for xsd_path in selected_schemas:
         try:
             schema_doc = etree.parse(xsd_path)
             schema = etree.XMLSchema(schema_doc)
-            if 'cached_etree' not in globals():
-                global cached_etree
-                cached_etree = etree.fromstring(xml_content.encode("utf-8"))
-            doc = cached_etree
+            doc = etree.fromstring(xml_content.encode("utf-8"))
             schema.assertValid(doc)
-            return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
+            valid_schemas.append(os.path.basename(xsd_path))
         except etree.DocumentInvalid as e:
-            errors = schema.error_log.filter_from_errors()
-            details = "".join([f"<li>Zeile {err.line}: {err.message}</li>" for err in errors])
-            results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><ul>{details}</ul></details>")
+            invalid_schemas.append((os.path.basename(xsd_path), str(e)))
         except Exception as e:
-            results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><pre>{e}</pre></details>")
-    return False, "❌ XSD-Validierung fehlgeschlagen:" + "<br>" + "<br>".join(results)
+            invalid_schemas.append((os.path.basename(xsd_path), f"Fehler: {str(e)}"))
+    return valid_schemas, invalid_schemas
 
 
 def validate_with_schematron(xml_content, xslt_path):
@@ -172,8 +168,12 @@ def index():
                     syntax_table = xml_suggestions
 
                 if valid:
-                    xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
-                    result += "<br><span style='color:black'>" + xsd_msg + "</span>"
+                    valid, invalid = validate_against_selected_xsds(xml, selected_schemas)
+                    if valid:
+                        result += "<br><span style='color:green'>✔️ Gültig für:<ul>" + "".join(f"<li>{x}</li>" for x in valid) + "</ul></span>"
+                    if invalid:
+                        result += "<br><span style='color:red'>❌ Ungültig für:<ul>" + "".join(f"<li>{x}: {msg.splitlines()[0]}</li>" for x, msg in invalid) + "</ul></span>"
+
 
                     if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
                         sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
