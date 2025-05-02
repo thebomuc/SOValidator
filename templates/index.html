@@ -49,10 +49,23 @@
     <form method="POST" enctype="multipart/form-data">
         <div class="box">
             <label>PDF-Datei mit eingebetteter XML hochladen:</label><br><br>
-            <input type="file" name="pdf_file" required>
-            <br><br>
-            <label><input type="checkbox" name="schematron"> Schematron-Prüfung aktivieren</label><br>
-            <label><input type="checkbox" name="nonstandard"> Nicht-standardisierte Tags anzeigen</label><br><br>
+            <input type="file" name="pdf_file" required><br><br>
+
+            <label><input type="checkbox" name="schematron" {% if request.form.get("schematron") %}checked{% endif %}> Schematron-Prüfung aktivieren</label><br>
+            <label><input type="checkbox" name="nonstandard" {% if request.form.get("nonstandard") %}checked{% endif %}> Nicht-standardisierte Tags anzeigen</label><br><br>
+
+            <label for="schemas"><strong>🧩 Wähle XSD-Schema(s) zur Validierung:</strong></label><br>
+            <select name="schemas" id="schemas" multiple size="6" style="width:100%; max-width:500px;">
+                {% for path, label in schema_choices %}
+                <option value="{{ path }}" {% if path in request.form.getlist('schemas') or (request.method != 'POST' and 'Factur-X_1.07.2_BASIC' in label or 'Factur-X_1.07.2_EN16931' in label) %}selected{% endif %}>
+                    {{ label }}
+                </option>
+                {% endfor %}
+            </select>
+            <p style="font-size: 0.9em; color: #555; margin-top: 0.5em;">
+                Halte <kbd>Strg</kbd> (Windows) oder <kbd>Cmd</kbd> (Mac) gedrückt, um mehrere Einträge auszuwählen.
+            </p>
+
             <button type="submit">Prüfen</button>
         </div>
     </form>
