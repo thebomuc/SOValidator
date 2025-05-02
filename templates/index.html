@@ -54,9 +54,9 @@
     </form>
   {% endif %}
 
-  {% if corrected_xml %}
-    <h3>Korrigiertes XML (Ausschnitt)</h3>
-    <pre style="max-height: 400px; overflow: auto;">{{ corrected_xml|e }}</pre>
+  {% if show_download %}
+    <h3>Neue korrigierte PDF</h3>
+    <p><a href="{{ url_for('download') }}" download>📄 Korrigierte PDF herunterladen</a></p>
   {% endif %}
 </body>
 </html>
