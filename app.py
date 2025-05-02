@@ -45,8 +45,7 @@ codelists = {
 	"HybridVersion": "Code",
 }
 code_sets = {}
-try:
-    for sheet, column in codelists.items():
+for sheet, column in codelists.items():
     try:
         df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl", header=None)
         values = df.values.flatten()
