@@ -45,14 +45,28 @@ codelists = {
 	"HybridVersion": "Code",
 }
 code_sets = {}
+
 for sheet, column in codelists.items():
     try:
-        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl", header=None)
-        values = df.values.flatten()
-        cleaned = set(str(v).strip() for v in values if pd.notnull(v))
-        code_sets[sheet] = cleaned
-except Exception as e:
-    print("⚠️ Fehler beim Vorladen der Codelisten:", e)
+        # Versuche, das Blatt mit Header zu laden (für strukturierte Tabellen)
+        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
+        df.columns = df.columns.str.strip()
+
+        if column in df.columns:
+            values = df[column].dropna().astype(str).str.strip().unique()
+            code_sets[sheet] = set(values)
+            print(f"✅ {sheet}: {len(values)} Werte geladen aus Spalte '{column}'")
+        else:
+            # Wenn Spalte nicht existiert – versuche Fallback: alles flach lesen
+            print(f"⚠️ Spalte '{column}' nicht gefunden in Blatt '{sheet}'. Verwende Fallback.")
+            df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl", header=None)
+            flat = df.values.flatten()
+            cleaned = set(str(v).strip() for v in flat if pd.notnull(v))
+            code_sets[sheet] = cleaned
+            print(f"✅ {sheet}: {len(cleaned)} Werte geladen (Fallback ohne Header)")
+
+    except Exception as e:
+        print(f"❌ Fehler beim Laden von '{sheet}': {e}")
 
 
 def list_all_xsd_files(schema_root):
