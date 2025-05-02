@@ -12,7 +12,7 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
 # Feste Pfade
 DEFAULT_XSD_ROOT = "ZF232_DE/Schema"
 DEFAULT_XSLT_PATH = "EN16931-CII-validation.xslt"
-EXCEL_PATH = "4. EN16931+FacturX code lists values v14 - used from 2024-11-15.xlsx"
+EXCEL_PATH = "static/data/4. EN16931+FacturX code lists values v14 - used from 2024-11-15.xlsx"
 
 # Code-Listen vorbereiten
 codelists = {
