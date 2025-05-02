@@ -13,11 +13,6 @@ DEFAULT_XSD_ROOT = "ZF232_DE/Schema"
 DEFAULT_XSLT_PATH = "EN16931-CII-validation.xslt"
 EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
 
-import pandas as pd
-xls = pd.ExcelFile(EXCEL_PATH, engine="openpyxl")
-print("📄 Verfügbare Tabellenblätter:")
-print(xls.sheet_names)
-
 codelists = {
     "Country": "Alpha-2 code",
     "Currency": "Alphabetic Code",
@@ -38,17 +33,16 @@ codelists = {
 #    "Characteristic": "Code list",
 #    "Line Status": "Code",
 #    "LineReason": "Code",
-    "INCOTERMS": "Code",
-    "TRANSPORT": "Code",
-    "Date": "Code",
-    "HybridDocument": "Code",
-    "HybridConformance": "Code",
-    "Filename": "Code",
-    "HybridVersion": "Code"
+#    "INCOTERMS": "Code",
+#    "TRANSPORT": "Code",
+#    "Date": "Code",
+#    "HybridDocument": "Code",
+#    "HybridConformance": "Code",
+#    "Filename": "Code",
+#    "HybridVersion": "Code"
 }
 code_sets = {}
 try:
-    for sheet in codelists:
         df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
         values = set()
         for col in df.columns:
