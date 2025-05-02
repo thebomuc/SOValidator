@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>SOValidator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 2em;
             background-color: #f8f8f8;
-        }
-        h1, h2 {
-            color: #333;
         }
         .box {
             background: #fff;
@@ -18,19 +17,6 @@
             border-radius: 8px;
             box-shadow: 0 0 5px rgba(0,0,0,0.1);
             margin-bottom: 2em;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 1em;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 0.5em;
-        }
-        th {
-            background-color: #eee;
-            text-align: left;
         }
         .highlight {
             color: red;
@@ -54,19 +40,30 @@
             <label><input type="checkbox" name="schematron" {% if request.form.get("schematron") %}checked{% endif %}> Schematron-Prüfung aktivieren</label><br>
             <label><input type="checkbox" name="nonstandard" {% if request.form.get("nonstandard") %}checked{% endif %}> Nicht-standardisierte Tags anzeigen</label><br><br>
 
-            <label for="schemas"><strong>🧩 Wähle XSD-Schema(s) zur Validierung:</strong></label><br>
-            <select name="schemas" id="schemas" multiple size="6" style="width:100%; max-width:500px;">
-                {% for path, label in schema_choices %}
-                <option value="{{ path }}" {% if path in request.form.getlist('schemas') or (request.method != 'POST' and 'Factur-X_1.07.2_BASIC' in label or 'Factur-X_1.07.2_EN16931' in label) %}selected{% endif %}>
-                    {{ label }}
-                </option>
-                {% endfor %}
-            </select>
-            <p style="font-size: 0.9em; color: #555; margin-top: 0.5em;">
-                Halte <kbd>Strg</kbd> (Windows) oder <kbd>Cmd</kbd> (Mac) gedrückt, um mehrere Einträge auszuwählen.
-            </p>
+            <div class="accordion" id="schemaAccordion" style="margin-top: 1em;">
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingSchemas">
+                  <button class="accordion-button {% if not syntax_table and not codelist_table and not suggestion %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSchemas" aria-expanded="true" aria-controls="collapseSchemas">
+                    🧩 Auswahl der XSD-Schema-Gruppen
+                  </button>
+                </h2>
+                <div id="collapseSchemas" class="accordion-collapse collapse {% if syntax_table or codelist_table or suggestion %}show{% endif %}" aria-labelledby="headingSchemas">
+                  <div class="accordion-body">
+                    {% for key, label in schema_choices %}
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="schemas" id="schema_{{ loop.index }}" value="{{ key }}"
+                             {% if key in request.form.getlist('schemas') or request.method != 'POST' %}checked{% endif %}>
+                      <label class="form-check-label" for="schema_{{ loop.index }}">
+                        {{ label }}
+                      </label>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <button type="submit">Prüfen</button>
+            <button type="submit" class="btn btn-primary mt-3">Prüfen</button>
         </div>
     </form>
 
@@ -86,11 +83,8 @@
     {% if excerpt %}
     <div class="box">
         <h3>🔍 XML-Auszug mit markierter Zeile</h3>
-        <pre>
-{% for line in excerpt %}
-{{ line|safe }}
-{% endfor %}
-        </pre>
+        <pre>{% for line in excerpt %}{{ line|safe }}
+{% endfor %}</pre>
     </div>
     {% endif %}
 
@@ -105,12 +99,12 @@
     <div class="box">
         <h3>📚 Codelistenverletzungen</h3>
         <p style="font-size: 0.9em;">{{ codelisten_hinweis }}</p>
-        <table>
-            <thead>
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
                 <tr>
-                    <th style="width:10%;">Zeile</th>
-                    <th style="width:10%;">Zeichen</th>
-                    <th style="width:20%;">Feld</th>
+                    <th>Zeile</th>
+                    <th>Zeichen</th>
+                    <th>Feld</th>
                     <th>Wert</th>
                 </tr>
             </thead>
@@ -131,9 +125,9 @@
     {% if syntax_table %}
     <div class="box">
         <h3>🧾 XML-Syntaxfehler</h3>
-        <table>
-            <thead>
-                <tr><th style="width:5%;">Typ</th><th>Fehlerbeschreibung</th></tr>
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr><th>Typ</th><th>Fehlerbeschreibung</th></tr>
             </thead>
             <tbody>
                 {% for item in syntax_table %}
