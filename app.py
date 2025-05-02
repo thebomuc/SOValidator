@@ -31,7 +31,7 @@ codelists = {
     "VATEX": "CODE",
     "Unit": "Code",
 #    "Characteristic": "Code list",
-    "Line Status": "Code",
+#    "Line Status": "Code",
     "LineReason": "Code",
     "INCOTERMS": "Code",
     "TRANSPORT": "Code",
