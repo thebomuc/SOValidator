@@ -156,11 +156,13 @@ def index():
     codelist_table = []
     syntax_table = []
 
-    all_schemas = list_all_xsd_files(DEFAULT_XSD_ROOT)
+all_schemas = list_all_xsd_files(DEFAULT_XSD_ROOT)
+
 default_selected = [
     s for s in all_schemas
     if os.path.basename(s) in ["Factur-X_1.07.2_BASIC.xsd", "Factur-X_1.07.2_EN16931.xsd"]
 ]
+
 schema_choices = [(x, f"{i+1}. {os.path.basename(x)}") for i, x in enumerate(all_schemas)]
 
     if request.method == "POST":
