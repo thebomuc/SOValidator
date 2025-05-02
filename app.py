@@ -241,13 +241,6 @@ def index():
                                 "value": value + suggestion
                             })
 
-                        issues.append({
-                                "label": label,
-                                "value": value + suggestion,
-                                "line": el.sourceline or 0,
-                                "column": 1
-                        })
-
                 if request.form.get("nonstandard"):
                     nonstandard_tags = detect_nonstandard_tags(xml)
                     for tag in nonstandard_tags:
