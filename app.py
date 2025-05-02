@@ -174,11 +174,25 @@ def index():
     syntax_table = []
 
     if request.method == "POST":
-        file = request.files["pdf_file"]
-        if file:
+        file = request.files.get("pdf_file")
+        if file and file.filename != "":
             filename = file.filename
             file_path = "uploaded.pdf"
             file.save(file_path)
+        elif os.path.exists("uploaded.pdf"):
+            filename = "uploaded.pdf"
+            file_path = "uploaded.pdf"
+        else:
+            result = "❌ Keine Datei ausgewählt oder hochgeladen."
+            return render_template("index.html",
+                                   result=result,
+                                   filename=filename,
+                                   excerpt=excerpt,
+                                   highlight_line=highlight_line,
+                                   suggestion="<br>".join(suggestions),
+                                   syntax_table=syntax_table,
+                                   codelist_table=codelist_table,
+                                   codelisten_hinweis=codelisten_hinweis)
             xml = extract_xml_from_pdf(file_path)
             if not xml:
                 result = "❌ Keine XML-Datei in der PDF gefunden."
