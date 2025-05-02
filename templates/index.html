@@ -3,41 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <title>SOValidator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2em;
+            background-color: #f8f8f8;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 2em;
+        }
+        .box {
+            background: #fff;
+            padding: 1em;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 1em;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 0.5em;
+        }
+        th {
+            background-color: #eee;
+            text-align: left;
+        }
+        .highlight {
+            color: red;
+            font-weight: bold;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 0.5em;
+            overflow-x: auto;
+        }
+    </style>
 </head>
 <body>
-    <h1>SOValidator – PDF/XML-Validierung</h1>
+    <h1>SOValidator – PDF/XML Validierung</h1>
+
     <form method="POST" enctype="multipart/form-data">
-        <label for="pdf_file">PDF-Datei mit eingebetteter XML wählen:</label><br><br>
-        <input type="file" name="pdf_file" accept=".pdf" required><br><br>
-        <label><input type="checkbox" name="schematron"> Schematron-Regeln prüfen</label><br>
-        <label><input type="checkbox" name="nonstandard"> Tags prüfen, die nicht in verwendeter XSD enthalten sind (z.B. Factur-X_1.07.2_EXTENDED.xsd)</label><br><br>
-        <button type="submit">Prüfen</button>
+        <div class="box">
+            <label>PDF-Datei mit eingebetteter XML hochladen:</label><br><br>
+            <input type="file" name="pdf_file" required>
+            <br><br>
+            <label><input type="checkbox" name="schematron"> Schematron-Prüfung aktivieren</label><br>
+            <label><input type="checkbox" name="nonstandard"> Nicht-standardisierte Tags anzeigen</label><br><br>
+            <button type="submit">Prüfen</button>
+        </div>
     </form>
 
     {% if filename %}
-        <h3>📄 Datei: {{ filename }}</h3>
+    <div class="box">
+        <h2>📄 Datei: {{ filename }}</h2>
+    </div>
     {% endif %}
 
     {% if result %}
-        <div style="margin-top: 1em;">
-            {{ result|safe }}
-        </div>
+    <div class="box">
+        <h2>🔎 Ergebnis</h2>
+        <div>{{ result|safe }}</div>
+    </div>
     {% endif %}
 
     {% if excerpt %}
-        <h4>🔍 XML-Auszug:</h4>
-        <pre style="background-color: #f8f8f8; padding: 1em; border: 1px solid #ccc;">
+    <div class="box">
+        <h3>🔍 XML-Auszug mit markierter Zeile</h3>
+        <pre>
 {% for line in excerpt %}
-<span {% if loop.index0 == highlight_line %}style="background-color:#ffeeee;"{% endif %}>{{ line }}</span>
+{{ line|safe }}
 {% endfor %}
         </pre>
+    </div>
     {% endif %}
 
     {% if suggestion %}
-        <h4>💡 Hinweise:</h4>
-        <div style="background-color:#f9f9f9; padding:0.8em; border:1px dashed #aaa;">
-            {{ suggestion|safe }}
-        </div>
+    <div class="box">
+        <h3>💡 Hinweise</h3>
+        <div>{{ suggestion|safe }}</div>
+    </div>
+    {% endif %}
+
+    {% if syntax_table %}
+    <div class="box">
+        <h3>🧾 XML-Syntaxfehler</h3>
+        <table>
+            <thead>
+                <tr><th style="width:5%;">Typ</th><th>Fehlerbeschreibung</th></tr>
+            </thead>
+            <tbody>
+                {% for item in syntax_table %}
+                <tr>
+                    <td style="text-align:center;">❌</td>
+                    <td>{{ item|safe }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if codelist_table %}
+    <div class="box">
+        <h3>📚 Codelistenverletzungen</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:10%;">Zeile</th>
+                    <th style="width:10%;">Spalte</th>
+                    <th style="width:20%;">Feld</th>
+                    <th>Wert</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in codelist_table %}
+                <tr>
+                    <td>{{ row.line }}</td>
+                    <td>{{ row.column }}</td>
+                    <td>{{ row.label }}</td>
+                    <td><span class="highlight">{{ row.value }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% endif %}
 </body>
 </html>
