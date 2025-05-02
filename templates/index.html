@@ -88,32 +88,43 @@
     </div>
     {% endif %}
 
-    {% if codelist_table %}
-    <div class="box">
-        <h3>📚 Codelistenverletzungen</h3>
-        <p style="font-size: 0.9em;">{{ codelisten_hinweis }}</p>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:10%;">Zeile</th>
-                    <th style="width:10%;">Zeichen</th>
-                    <th style="width:20%;">Feld</th>
-                    <th>Wert</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in codelist_table %}
-                <tr>
-                    <td>{{ row.line }}</td>
-                    <td>{{ row.column }}</td>
-                    <td>{{ row.label }}</td>
-                    <td><span class="highlight">{{ row.value }}</span></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
+{% if codelist_table %}
+  <h3>Codelistenverletzungen</h3>
+  <form method="post">
+    <table border="1" cellpadding="6">
+      <thead>
+        <tr>
+          <th>Feld</th>
+          <th>Wert</th>
+          <th>Zeile</th>
+          <th>Vorschlag</th>
+          <th>Korrigieren?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in codelist_table %}
+          <tr>
+            <td>{{ entry.label }}</td>
+            <td>{{ entry.value }}</td>
+            <td>{{ entry.line }}</td>
+            <td>{{ entry.suggestion or "-" }}</td>
+            <td>
+              {% if entry.suggestion %}
+                <button type="submit" name="fix_single" value="{{ loop.index0 }}">✔ Nur diesen</button>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <br>
+    <button type="submit" name="fix_all" value="1">✔ Alle Vorschläge übernehmen</button>
+    <input type="hidden" name="action" value="apply_fixes">
+  </form>
+{% endif %}
+
 
     {% if syntax_table %}
     <div class="box">
