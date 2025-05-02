@@ -47,8 +47,11 @@ codelists = {
 code_sets = {}
 try:
     for sheet, column in codelists.items():
-        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
-        code_sets[sheet] = set(df[column].dropna().astype(str).str.strip().unique())
+    try:
+        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl", header=None)
+        values = df.values.flatten()
+        cleaned = set(str(v).strip() for v in values if pd.notnull(v))
+        code_sets[sheet] = cleaned
 except Exception as e:
     print("⚠️ Fehler beim Vorladen der Codelisten:", e)
 
