@@ -32,7 +32,7 @@ codelists = {
     "Unit": "Code",
 #    "Characteristic": "Code list",
 #    "Line Status": "Code",
-    "LineReason": "Code",
+#    "LineReason": "Code",
     "INCOTERMS": "Code",
     "TRANSPORT": "Code",
     "Date": "Code",
