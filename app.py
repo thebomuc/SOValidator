@@ -167,13 +167,13 @@ def index():
                 result = "❌ Keine XML-Datei in der PDF gefunden."
             else:
                 valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
-                result = f"<span style='color:orange;font-weight:bold'>{msg}</span>"
+                result = f"<span style='color:black'>{msg}</span>"
                 if xml_suggestions:
                     syntax_table = xml_suggestions
 
                 if valid:
                     xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
-                    result += "<br><span style='color:darkorange'>" + xsd_msg + "</span>"
+                    result += "<br><span style='color:black'>" + xsd_msg + "</span>"
 
                     if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
                         sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
@@ -195,7 +195,7 @@ def index():
                     for match in re.finditer(pattern, xml):
                         value = match.group(1).strip()
                         if value not in allowed_set:
-                            start_index = match.start(1)  # Startposition des Werts im XML
+                            start_index = match.start(1)
                             before = xml[:start_index]
                             line = before.count("\n") + 1
                             col = start_index - before.rfind("\n")
@@ -205,16 +205,19 @@ def index():
                                 "line": line,
                                 "column": col
                             })
+
                 if request.form.get("nonstandard"):
                     nonstandard_tags = detect_nonstandard_tags(xml)
                     for tag in nonstandard_tags:
                         suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
 
-    suggestions.append("ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'.")
+    codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
 
     legend = """<div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
-<span style='color:red;font-weight:bold'>Rot:</span> Alle Fehler und Verstöße<br>
+<span style='color:red;font-weight:bold'>❌ Fehler</span><br>
+<span style='color:orange;font-weight:bold'>⚠️ Warnung</span><br>
+<span style='color:black'>✔️ Erfolgreich</span>
 </div>"""
 
     return render_template("index.html",
@@ -224,7 +227,8 @@ def index():
                            highlight_line=highlight_line,
                            suggestion="<br>".join(suggestions),
                            syntax_table=syntax_table,
-                           codelist_table=codelist_table)
+                           codelist_table=codelist_table,
+                           codelisten_hinweis=codelisten_hinweis)
 
 
 if __name__ == "__main__":
