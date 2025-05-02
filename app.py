@@ -186,7 +186,7 @@ def index():
             result = "❌ Keine Datei ausgewählt oder hochgeladen."
             return render_template("index.html",
                                    result=result,
-                                   filename=filename,
+                                   
                                    excerpt=excerpt,
                                    highlight_line=highlight_line,
                                    suggestion="<br>".join(suggestions),
@@ -258,16 +258,11 @@ def index():
 
     codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
 
-    legend = """<div style='margin-top:1em; font-size:0.9em'>
-<strong>Legende:</strong><br>
-<span style='color:red;font-weight:bold'>❌ Fehler</span><br>
-<span style='color:orange;font-weight:bold'>⚠️ Warnung</span><br>
-<span style='color:black'>✔️ Erfolgreich</span>
-</div>"""
+    
 
     return render_template("index.html",
-                           result=result + legend,
-                           filename=filename,
+                           
+                           
                            excerpt=excerpt,
                            highlight_line=highlight_line,
                            suggestion="<br>".join(suggestions),
