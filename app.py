@@ -3,13 +3,35 @@ import fitz  # PyMuPDF
 from lxml import etree
 import os
 import re
+import pandas as pd
+from openpyxl import load_workbook
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
 
-# Feste XSD/XSLT-Pfade
+# Feste Pfade
 DEFAULT_XSD_ROOT = "ZF232_DE/Schema"
 DEFAULT_XSLT_PATH = "EN16931-CII-validation.xslt"
+EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
+
+# Code-Listen vorbereiten
+codelists = {
+    "Currency": "Alphabetic Code",
+    "Country": "Alpha-2 code",
+    "5305": "Code",
+    "VATEX": "CODE",
+    "1153": "Code Values",
+    "1001": "Code",
+    "Allowance": "Code",
+    "Charge": "Code",
+}
+code_sets = {}
+try:
+    for sheet, column in codelists.items():
+        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
+        code_sets[sheet] = set(df[column].dropna().astype(str).str.strip().unique())
+except Exception as e:
+    print("⚠️ Fehler beim Vorladen der Codelisten:", e)
 
 
 def list_all_xsd_files(schema_root):
@@ -19,6 +41,7 @@ def list_all_xsd_files(schema_root):
             if file.endswith(".xsd"):
                 xsd_files.append(os.path.join(root, file))
     return xsd_files
+
 
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
@@ -41,11 +64,13 @@ def extract_xml_from_pdf(pdf_path):
             return xml_bytes.decode("latin1")
     return None
 
+
 def extract_code_context(xml_lines, error_line, context=2):
     start = max(0, error_line - context - 1)
     end = min(len(xml_lines), error_line + context)
     excerpt = xml_lines[start:end]
     return excerpt, error_line - start - 1
+
 
 def validate_xml(xml_content):
     parser = etree.XMLParser(recover=True)
@@ -76,6 +101,7 @@ def validate_xml(xml_content):
     else:
         return True, "✔️ XML ist wohlgeformt.", [], None, None
 
+
 def detect_nonstandard_tags(xml_content):
     known_tags = {"ID", "Name", "CityName", "PostcodeCode", "LineOne", "StreetName", "Country", "URIID"}
     nonstandard = set()
@@ -85,6 +111,7 @@ def detect_nonstandard_tags(xml_content):
         if tagname not in known_tags:
             nonstandard.add(tagname)
     return sorted(nonstandard)
+
 
 def validate_against_all_xsds(xml_content, schema_root):
     results = []
@@ -106,6 +133,7 @@ def validate_against_all_xsds(xml_content, schema_root):
             results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><pre>{e}</pre></details>")
     return False, "❌ XSD-Validierung fehlgeschlagen:" + "<br>" + "<br>".join(results)
 
+
 def validate_with_schematron(xml_content, xslt_path):
     try:
         xml_doc = etree.fromstring(xml_content.encode("utf-8"))
@@ -118,36 +146,15 @@ def validate_with_schematron(xml_content, xslt_path):
         return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
 
 
-import pandas as pd
-from openpyxl import load_workbook
-
-EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
-codelists = {
-    "Currency": "Alphabetic Code",
-    "Country": "Alpha-2 code",
-    "5305": "Code",
-    "VATEX": "CODE",
-    "1153": "Code Values",
-    "1001": "Code",
-    "Allowance": "Code",
-    "Charge": "Code",
-}
-code_sets = {}
-try:
-    for sheet, column in codelists.items():
-        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
-        code_sets[sheet] = set(df[column].dropna().astype(str).str.strip().unique())
-except Exception as e:
-    print("⚠️ Fehler beim Vorladen der Codelisten:", e)
-
 @app.route("/", methods=["GET", "POST"])
-
 def index():
     result = ""
     filename = ""
-    excerpt = []  # wird ggf. später mit markierten Zeilen überschrieben
+    excerpt = []
     highlight_line = None
     suggestions = []
+    codelist_table = []
+    syntax_table = []
 
     if request.method == "POST":
         file = request.files["pdf_file"]
@@ -162,18 +169,18 @@ def index():
                 valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
                 result = f"<span style='color:orange;font-weight:bold'>{msg}</span>"
                 if xml_suggestions:
-                    suggestions.extend(xml_suggestions)
-                elif valid:
+                    syntax_table = xml_suggestions
+
+                if valid:
                     xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
                     result += "<br><span style='color:darkorange'>" + xsd_msg + "</span>"
-                    if "Failed to parse QName" in xsd_msg:
-                        suggestions.append("💡 Vorschlag: In diesem Feld ist ein Qualified Name (QName) erforderlich. Prüfen Sie, ob versehentlich ein URL-Wert wie 'https:' angegeben wurde.")
+
                     if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
                         sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
                         for msg in sch_issues:
                             suggestions.append(f"❌ {msg}")
-                nonstandard_tags = detect_nonstandard_tags(xml)
-                # Codelistenprüfung ausführen
+
+                xml_lines = xml.splitlines()
                 codelist_checks = [
                     (r"<ram:CurrencyCode>(.*?)</ram:CurrencyCode>", code_sets.get("Currency", set()), "CurrencyCode"),
                     (r"<ram:CountryID>(.*?)</ram:CountryID>", code_sets.get("Country", set()), "CountryID"),
@@ -186,29 +193,41 @@ def index():
                 ]
                 for pattern, allowed_set, label in codelist_checks:
                     for match in re.findall(pattern, xml):
-                        if match.strip() not in allowed_set:
-                            suggestions.append(f"❌ Ungültiger {label}: {match.strip()} ist nicht in der offiziellen Codeliste enthalten.")
-                            # Markierung im XML-Quelltext (für Anzeige)
-                            highlight_tag = f">{match.strip()}<"
-                            xml_lines = xml.splitlines()
+                        value = match.strip()
+                        if value not in allowed_set:
                             for i, line in enumerate(xml_lines):
-                                if highlight_tag in line:
-                                    excerpt, highlight_line = extract_code_context(xml_lines, i + 1)
-                                    # Färbe den betroffenen Wert im XML-Auszug rot ein
-                                    excerpt[highlight_line] = excerpt[highlight_line].replace(match.strip(), f"<span style='color:red;font-weight:bold;text-decoration:underline'>{match.strip()}</span>")
+                                col = line.find(value)
+                                if col != -1:
+                                    codelist_table.append({
+                                        "label": label,
+                                        "value": value,
+                                        "line": i + 1,
+                                        "column": col + 1
+                                    })
                                     break
 
-                if request.form.get("nonstandard") and nonstandard_tags:
+                if request.form.get("nonstandard"):
+                    nonstandard_tags = detect_nonstandard_tags(xml)
                     for tag in nonstandard_tags:
                         suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
-                
+
     suggestions.append("ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'.")
+
     legend = """<div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
 <span style='color:red;font-weight:bold'>Rot:</span> Alle Fehler und Verstöße<br>
 </div>"""
-    return render_template("index.html", result=result + legend, filename=filename, excerpt=excerpt, highlight_line=highlight_line, suggestion="<br>".join(suggestions))
+
+    return render_template("index.html",
+                           result=result + legend,
+                           filename=filename,
+                           excerpt=excerpt,
+                           highlight_line=highlight_line,
+                           suggestion="<br>".join(suggestions),
+                           syntax_table=syntax_table,
+                           codelist_table=codelist_table)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(debug=False, host="0.0.0.0", port=port)
+    app.run(debug=True, host="0.0.0.0", port=port)
