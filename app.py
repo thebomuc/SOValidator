@@ -12,18 +12,37 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
 # Feste Pfade
 DEFAULT_XSD_ROOT = "ZF232_DE/Schema"
 DEFAULT_XSLT_PATH = "EN16931-CII-validation.xslt"
-EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
+EXCEL_PATH = "4. EN16931+FacturX code lists values v14 - used from 2024-11-15.xlsx"
 
 # Code-Listen vorbereiten
 codelists = {
-    "Currency": "Alphabetic Code",
     "Country": "Alpha-2 code",
-    "5305": "Code",
-    "VATEX": "CODE",
+	"Currency": "Alphabetic Code",
+	"ICD": "Code",
+	"1001": "Code",
     "1153": "Code Values",
-    "1001": "Code",
+	"VAT CAT": "Code",	
+    "Text": "Code",	
+    "Payment": "Code",	
+	"5305": "Code",
     "Allowance": "Code",
+    "Item": "Code",
     "Charge": "Code",
+	"MIME": "Code",
+	"EAS": "AES",
+    "VATEX": "CODE",
+	"Unit": "Code",
+	"Line Status": "Code",
+    "Language": "Code",
+	"Characteristic": "Code",
+	"Line Reason": "Code",
+	"INCOTERMS": "Code",
+	"TRANSPORT": "Code",
+	"Date": "Code",
+	"HybridDocument": "Code",
+	"HybridConformance": "Code",
+	"Filename": "Code",
+	"HybridVersion": "Code",
 }
 code_sets = {}
 try:
