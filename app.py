@@ -228,7 +228,7 @@ def index():
                                     "value": value,
                                     "suggestion": suggestion,
                                     "line": lineno,
-                                    "column": line.find(value) + 1
+                                    "column": match.start(1) + 1  # Position im gesamten XML, 1-basiert
                                 })
 
                 if request.form.get("nonstandard"):
