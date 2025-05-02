@@ -168,7 +168,7 @@ def index():
                         "HybridVersion": "HybridVersion",
                         "HybridDocument": "HybridDocument",
                         "HybridConformance": "HybridConformance",
-                        "LiveStatus": "Live Status",
+                        "LineStatus": "LineStatus",
                         "Characteristic": "Characteristic",
                         "LineReason": "LineReason",
                         "Date": "Date",
@@ -186,25 +186,25 @@ def index():
                             if value not in allowed_values:
                                 suggestions.append(f"❌ Ungültiger Wert in <ram:{tag}>: {value} ist nicht in der offiziellen Codeliste ({sheet}) enthalten.")
                     
-                    codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
-                    legend = """<div style='margin-top:1em; font-size:0.9em'><div style='margin-top:1em; font-size:0.9em'>
+codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
+legend = """<div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
 <span style='color:red;font-weight:bold'>❌ Fehler</span><br>
 <span style='color:orange;font-weight:bold'>⚠️ Warnung</span><br>
 <span style='color:black'>✔️ Erfolgreich</span>
 </div>"""
 
-                    return render_template("index.html",
-                        result=result + legend,
-                        filename=filename,
-                        excerpt=excerpt,
-                        highlight_line=highlight_line,
-                        suggestion="<br>".join(suggestions),
-                        syntax_table=syntax_table,
-                        codelist_table=codelist_table,
-                        codelisten_hinweis=codelisten_hinweis,
-                        schema_choices=schema_choices
-                    )
+return render_template("index.html",
+    result=result + legend,
+    filename=filename,
+    excerpt=excerpt,
+    highlight_line=highlight_line,
+    suggestion="<br>".join(suggestions),
+    syntax_table=syntax_table,
+    codelist_table=codelist_table,
+    codelisten_hinweis=codelisten_hinweis,
+    schema_choices=schema_choices
+)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
