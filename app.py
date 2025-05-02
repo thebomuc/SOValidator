@@ -140,16 +140,15 @@ def index():
                     if invalid:
                         result += "<br><span style='color:red'>❌ Ungültig für:<ul>" + "".join(f"<li>🔴 {x}: {msg.splitlines()[0]}</li>" for x, msg in invalid) + "</ul></span>"
 
-                    # ➕ Dynamische Attribut- und Elementinhalt-Prüfung für alle bekannten Codelistenfelder
+                    # Attributprüfung
                     for sheet, values in code_sets.items():
-                        # Attributprüfung
                         pattern_attr = fr'{sheet}="(.*?)"'
                         for match in re.findall(pattern_attr, xml):
                             value = match.strip()
                             if value not in values:
                                 suggestions.append(f"❌ Ungültiger Wert in Attribut {sheet}: {value} ist nicht in der offiziellen Codeliste enthalten.")
 
-                    # ➕ Prüfung auf Codelistenwerte im Elementinhalt per Mapping
+                    # Elementinhaltprüfung
                     element_mapping = {
                         "CurrencyCode": "Currency",
                         "CountryID": "Country",
@@ -168,7 +167,7 @@ def index():
                         "HybridVersion": "HybridVersion",
                         "HybridDocument": "HybridDocument",
                         "HybridConformance": "HybridConformance",
-                        "LineStatus": "LineStatus",
+                        "LiveStatus": "Live Status",
                         "Characteristic": "Characteristic",
                         "LineReason": "LineReason",
                         "Date": "Date",
@@ -185,26 +184,26 @@ def index():
                             value = match.strip()
                             if value not in allowed_values:
                                 suggestions.append(f"❌ Ungültiger Wert in <ram:{tag}>: {value} ist nicht in der offiziellen Codeliste ({sheet}) enthalten.")
-                    
-codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
-legend = """<div style='margin-top:1em; font-size:0.9em'>
+
+    codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
+    legend = """<div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
 <span style='color:red;font-weight:bold'>❌ Fehler</span><br>
 <span style='color:orange;font-weight:bold'>⚠️ Warnung</span><br>
 <span style='color:black'>✔️ Erfolgreich</span>
 </div>"""
 
-return render_template("index.html",
-    result=result + legend,
-    filename=filename,
-    excerpt=excerpt,
-    highlight_line=highlight_line,
-    suggestion="<br>".join(suggestions),
-    syntax_table=syntax_table,
-    codelist_table=codelist_table,
-    codelisten_hinweis=codelisten_hinweis,
-    schema_choices=schema_choices
-)
+    return render_template("index.html",
+        result=result + legend,
+        filename=filename,
+        excerpt=excerpt,
+        highlight_line=highlight_line,
+        suggestion="<br>".join(suggestions),
+        syntax_table=syntax_table,
+        codelist_table=codelist_table,
+        codelisten_hinweis=codelisten_hinweis,
+        schema_choices=schema_choices
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
