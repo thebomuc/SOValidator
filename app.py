@@ -226,19 +226,26 @@ def index():
                     (r"<ram:AllowanceReasonCode>(.*?)</ram:AllowanceReasonCode>", code_sets.get("Allowance", set()), "AllowanceReasonCode"),
                     (r"<ram:ChargeReasonCode>(.*?)</ram:ChargeReasonCode>", code_sets.get("Charge", set()), "ChargeReasonCode"),
                 ]
-                for pattern, allowed_set, label in codelist_checks:
-                    for match in re.finditer(pattern, xml):
-                        value = match.group(1).strip()
-                        if value not in allowed_set:
-                            suggestion = ""
-                            if value.upper() in allowed_set:
-                                suggestion = f" Möglicherweise meinten Sie „{value.upper()}“."
-                            elif value.lower() in allowed_set:
-                                suggestion = f" Möglicherweise meinten Sie „{value.lower()}“."
+		xml_lines = xml.splitlines()
+
+		for pattern, allowed_set, label in codelist_checks:
+		regex = re.compile(pattern)
+ 		for lineno, line in enumerate(xml_lines, start=1):
+      		    match = regex.search(line)
+       		    if match:
+            		value = match.group(1).strip()
+        		if value not in allowed_set:
+              		    suggestion = ""
+            		    if value.upper() in allowed_set:
+              		        suggestion = f" Möglicherweise meinten Sie „{value.upper()}“."
+           		    elif value.lower() in allowed_set:
+              		        suggestion = f" Möglicherweise meinten Sie „{value.lower()}“."
 
                             codelist_table.append({
                                 "label": label,
-                                "value": value + suggestion
+                                "value": value + suggestion,
+                                "line": lineno,
+                                "column": line.find(value) + 1  # einfacher Zeichenindex
                             })
 
                 if request.form.get("nonstandard"):
