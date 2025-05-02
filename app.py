@@ -16,14 +16,32 @@ EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.x
 
 # Code-Listen vorbereiten
 codelists = {
-    "Currency": "Alphabetic Code",
     "Country": "Alpha-2 code",
-    "5305": "Code",
-    "VATEX": "CODE",
+	"Currency": "Alphabetic Code",
+	"ICD": "Code",
+	"1001": "Code",
     "1153": "Code Values",
-    "1001": "Code",
+	"VAT CAT": "Code",	
+    "Text": "Code",	
+    "Payment": "Code",	
+	"5305": "Code",
     "Allowance": "Code",
+    "Item": "Code",
     "Charge": "Code",
+	"MIME": "Code",
+	"EAS": "AES",
+    "VATEX": "CODE",
+	"Unit": "Code",
+	"Live Status": "Code",
+	"Characteristic": "Code",
+	"LineReason": "Code",
+	"INCOTERMS": "Code",
+	"TRANSPORT": "Code",
+	"Date": "Code",
+	"HybridDocument": "Code",
+	"HybridConformance": "Code",
+	"Filename": "Code",
+	"HybridVersion": "Code",
 }
 code_sets = {}
 try:
