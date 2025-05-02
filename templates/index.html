@@ -12,14 +12,12 @@
         h1, h2 {
             color: #333;
         }
-        form {
-            margin-bottom: 2em;
-        }
         .box {
             background: #fff;
             padding: 1em;
             border-radius: 8px;
             box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            margin-bottom: 2em;
         }
         table {
             border-collapse: collapse;
@@ -90,28 +88,10 @@
     </div>
     {% endif %}
 
-    {% if syntax_table %}
-    <div class="box">
-        <h3>🧾 XML-Syntaxfehler</h3>
-        <table>
-            <thead>
-                <tr><th style="width:5%;">Typ</th><th>Fehlerbeschreibung</th></tr>
-            </thead>
-            <tbody>
-                {% for item in syntax_table %}
-                <tr>
-                    <td style="text-align:center;">❌</td>
-                    <td>{{ item|safe }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
-
     {% if codelist_table %}
     <div class="box">
         <h3>📚 Codelistenverletzungen</h3>
+        <p style="font-size: 0.9em;">{{ codelisten_hinweis }}</p>
         <table>
             <thead>
                 <tr>
@@ -128,6 +108,25 @@
                     <td>{{ row.column }}</td>
                     <td>{{ row.label }}</td>
                     <td><span class="highlight">{{ row.value }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if syntax_table %}
+    <div class="box">
+        <h3>🧾 XML-Syntaxfehler</h3>
+        <table>
+            <thead>
+                <tr><th style="width:5%;">Typ</th><th>Fehlerbeschreibung</th></tr>
+            </thead>
+            <tbody>
+                {% for item in syntax_table %}
+                <tr>
+                    <td style="text-align:center;">❌</td>
+                    <td>{{ item|safe }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
