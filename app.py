@@ -187,7 +187,7 @@ def index():
                                 suggestions.append(f"❌ Ungültiger Wert in <ram:{tag}>: {value} ist nicht in der offiziellen Codeliste ({sheet}) enthalten.")
 
 codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
-legend = """<div style='margin-top:1em; font-size:0.9em'>
+legend = """<div style='margin-top:1em; font-size:0.9em'><div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
 <span style='color:red;font-weight:bold'>❌ Fehler</span><br>
 <span style='color:orange;font-weight:bold'>⚠️ Warnung</span><br>
