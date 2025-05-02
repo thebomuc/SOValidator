@@ -52,29 +52,27 @@ def validate_xml(xml_content):
     try:
         etree.fromstring(xml_content.encode("utf-8"), parser)
     except etree.XMLSyntaxError:
-        pass  # Fehler werden über error_log behandelt
+        pass
 
     if parser.error_log:
         suggestions = []
         xml_lines = xml_content.splitlines()
 
         for err in parser.error_log:
-            excerpt, highlight_line = extract_code_context(xml_lines, err.line)
-            # Fehlerhafte Zeile fett/rot hervorheben
-            error_line = excerpt[highlight_line]
-            excerpt[highlight_line] = (
+            excerpt, _ = extract_code_context(xml_lines, err.line)
+            error_line = excerpt[err.line - max(0, err.line - 3) - 1]
+            excerpt[err.line - max(0, err.line - 3) - 1] = (
                 f"<span style='color:red;font-weight:bold;text-decoration:underline'>{error_line}</span>"
             )
-            # Formatierte Fehlerausgabe
             error_msg = (
                 f"❌ Zeile {err.line}, Spalte {err.column}: {err.message}<br>"
                 + "<br>".join(excerpt)
             )
             suggestions.append(error_msg)
 
-        return False, "❌ XML enthält Syntaxfehler:", None, suggestions
+        return False, "❌ XML enthält Syntaxfehler:", [], None, suggestions
     else:
-        return True, "✔️ XML ist wohlgeformt.", None, None
+        return True, "✔️ XML ist wohlgeformt.", [], None, None
 
 def detect_nonstandard_tags(xml_content):
     known_tags = {"ID", "Name", "CityName", "PostcodeCode", "LineOne", "StreetName", "Country", "URIID"}
@@ -159,7 +157,7 @@ def index():
             if not xml:
                 result = "❌ Keine XML-Datei in der PDF gefunden."
             else:
-                valid, msg, excerpt, xml_suggestions = validate_xml(xml)
+                valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
                 result = f"<span style='color:orange;font-weight:bold'>{msg}</span>"
                 if xml_suggestions:
                     suggestions.extend(xml_suggestions)
