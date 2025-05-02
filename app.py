@@ -192,20 +192,19 @@ def index():
                     (r"<ram:ChargeReasonCode>(.*?)</ram:ChargeReasonCode>", code_sets.get("Charge", set()), "ChargeReasonCode"),
                 ]
                 for pattern, allowed_set, label in codelist_checks:
-                    for match in re.findall(pattern, xml):
-                        value = match.strip()
+                    for match in re.finditer(pattern, xml):
+                        value = match.group(1).strip()
                         if value not in allowed_set:
-                            for i, line in enumerate(xml_lines):
-                                col = line.find(value)
-                                if col != -1:
-                                    codelist_table.append({
-                                        "label": label,
-                                        "value": value,
-                                        "line": i + 1,
-                                        "column": col + 1
-                                    })
-                                    break
-
+                            start_index = match.start(1)  # Startposition des Werts im XML
+                            before = xml[:start_index]
+                            line = before.count("\n") + 1
+                            col = start_index - before.rfind("\n")
+                            codelist_table.append({
+                                "label": label,
+                                "value": value,
+                                "line": line,
+                                "column": col
+                            })
                 if request.form.get("nonstandard"):
                     nonstandard_tags = detect_nonstandard_tags(xml)
                     for tag in nonstandard_tags:
