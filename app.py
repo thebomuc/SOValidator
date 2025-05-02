@@ -92,7 +92,7 @@ def validate_xml(xml_content):
                     f"<span style='color:red;font-weight:bold;text-decoration:underline'>{line_content}</span>"
                 )
             error_msg = (
-                f"❌ Zeile {err.line}, Zeichen {err.column}: {err.message}<br>"
+                f"❌ Zeile {err.line}, Spalte {err.column}: {err.message}<br>"
                 + "<br>".join(excerpt)
             )
             suggestions.append(error_msg)
@@ -113,24 +113,25 @@ def detect_nonstandard_tags(xml_content):
     return sorted(nonstandard)
 
 
-def validate_against_selected_xsds(xml_content, selected_schemas):
+def validate_against_all_xsds(xml_content, schema_root):
     results = []
-    success = False
-    for xsd_path in selected_schemas:
+    for xsd_path in list_all_xsd_files(schema_root):
         try:
             schema_doc = etree.parse(xsd_path)
             schema = etree.XMLSchema(schema_doc)
-            doc = etree.fromstring(xml_content.encode("utf-8"))
+            if 'cached_etree' not in globals():
+                global cached_etree
+                cached_etree = etree.fromstring(xml_content.encode("utf-8"))
+            doc = cached_etree
             schema.assertValid(doc)
-            results.append(f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)}).")
-            success = True
+            return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
         except etree.DocumentInvalid as e:
             errors = schema.error_log.filter_from_errors()
             details = "".join([f"<li>Zeile {err.line}: {err.message}</li>" for err in errors])
-            results.append(f"❌ Fehler bei {os.path.basename(xsd_path)}:<ul>{details}</ul>")
+            results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><ul>{details}</ul></details>")
         except Exception as e:
-            results.append(f"❌ Fehler bei {os.path.basename(xsd_path)}:<pre>{e}</pre>")
-    return success, "<br>".join(results)
+            results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><pre>{e}</pre></details>")
+    return False, "❌ XSD-Validierung fehlgeschlagen:" + "<br>" + "<br>".join(results)
 
 
 def validate_with_schematron(xml_content, xslt_path):
@@ -155,14 +156,9 @@ def index():
     codelist_table = []
     syntax_table = []
 
-    all_schemas = list_all_xsd_files(DEFAULT_XSD_ROOT)
-    schema_choices = [(x, f"{i+1}. {os.path.basename(x)}") for i, x in enumerate(all_schemas)]
-
     if request.method == "POST":
         file = request.files["pdf_file"]
-        selected_schemas = request.form.getlist("schemas")
-
-        if file and selected_schemas:
+        if file:
             filename = file.filename
             file_path = "uploaded.pdf"
             file.save(file_path)
@@ -176,7 +172,7 @@ def index():
                     syntax_table = xml_suggestions
 
                 if valid:
-                    xsd_ok, xsd_msg = validate_against_selected_xsds(xml, selected_schemas)
+                    xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
                     result += "<br><span style='color:black'>" + xsd_msg + "</span>"
 
                     if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
@@ -232,8 +228,7 @@ def index():
                            suggestion="<br>".join(suggestions),
                            syntax_table=syntax_table,
                            codelist_table=codelist_table,
-                           codelisten_hinweis=codelisten_hinweis,
-                           schema_choices=schema_choices)
+                           codelisten_hinweis=codelisten_hinweis)
 
 
 if __name__ == "__main__":
