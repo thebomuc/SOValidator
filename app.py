@@ -229,17 +229,19 @@ def index():
                 for pattern, allowed_set, label in codelist_checks:
                     for match in re.finditer(pattern, xml):
                         value = match.group(1).strip()
-                        if value not in allowed_set:
-                            start_index = match.start(1)
-                            before = xml[:start_index]
-                            line = before.count("\n") + 1
-                            col = start_index - before.rfind("\n")
-                            codelist_table.append({
-                                "label": label,
-                                "value": value,
-                                "line": line,
-                                "column": col
-                            })
+                        if value not in allowed_values:
+    			suggestion = ""
+    			if value.upper() in allowed_values:
+        			suggestion = f" Möglicherweise meinten Sie „{value.upper()}“."
+    			elif value.lower() in allowed_values:
+        			suggestion = f" Möglicherweise meinten Sie „{value.lower()}“."
+
+    			issues.append({
+        			"label": label,
+        			"value": value + suggestion,
+        			"line": el.sourceline or 0,
+        			"column": 1
+    			})
 
                 if request.form.get("nonstandard"):
                     nonstandard_tags = detect_nonstandard_tags(xml)
