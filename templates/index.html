@@ -88,40 +88,40 @@
     </div>
     {% endif %}
 
-    {% if codelist_table %}
-    <div class="box">
-        <h3>📚 Codelistenverletzungen</h3>
-        <p style="font-size: 0.9em;">{{ codelisten_hinweis }}</p>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:10%;">Zeile</th>
-                    <th style="width:10%;">Zeichen</th>
-                    <th style="width:15%;">Feld</th>
-                    <th>Fehlerhafter Wert</th>
-                    <th>Korrekturvorschlag</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in codelist_table %}
-                <tr>
-                    <td>{{ row.line }}</td>
-                    <td>{{ row.column }}</td>
-                    <td>{{ row.label }}</td>
-                    <td><span class="highlight">{{ row.value }}</span></td>
-                    <td>
-                        {% if row.suggestion %}
-                            <span style="color:orange">{{ row.suggestion }}</span>
-                        {% else %}
-                            (kein Vorschlag vorhanden)
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
+   {% if codelist_table %}
+<div class="box">
+    <h3>📚 Codelistenverletzungen</h3>
+    <p style="font-size: 0.9em;">{{ codelisten_hinweis }}</p>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:8%;">Zeile</th>
+                <th style="width:8%;">Zeichen</th>
+                <th style="width:15%;">Feld</th>
+                <th style="width:25%;">Fehlerhafter Wert</th>
+                <th>Korrekturvorschlag</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in codelist_table %}
+            <tr>
+                <td>{{ row.line }}</td>
+                <td>{{ row.column }}</td>
+                <td>{{ row.label }}</td>
+                <td><span class="highlight">{{ row.value }}</span></td>
+                <td>
+                    {% if row.suggestion %}
+                        <span style="color:orange">{{ row.suggestion }}</span>
+                    {% else %}
+                        &ndash;
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
 
     {% if syntax_table %}
     <div class="box">
