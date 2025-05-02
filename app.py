@@ -114,14 +114,19 @@ def index():
     available_schema_folders = {
         "Factur-X_1.07.2_BASIC": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.07.2_BASIC"),
         "Factur-X_1.07.2_EN16931": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.07.2_EN16931"),
+        "Factur-X_1.07.2_EXTENDED": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.07.2_EXTENDED"),
+        "Factur-X_1.0.05": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.0.05"),
+        "Factur-X_1.0.06": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.0.06"),
+        "Factur-X_1.0.07": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.0.07")
     }
+
     schema_choices = [(key, key.replace("_", " ")) for key in available_schema_folders]
 
     if request.method == "POST":
         file = request.files.get("pdf_file")
         selected_schema_keys = request.form.getlist("schemas")
         if not selected_schema_keys:
-            selected_schema_keys = ["Factur-X_1.07.2_BASIC", "Factur-X_1.07.2_EN16931"]
+            selected_schema_keys = list(available_schema_folders.keys())
 
         selected_schemas = []
         for key in selected_schema_keys:
