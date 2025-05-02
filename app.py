@@ -156,20 +156,23 @@ def index():
     codelist_table = []
     syntax_table = []
 
-    all_schemas = list_all_xsd_files(DEFAULT_XSD_ROOT)
+    available_schema_folders = {
+    "Factur-X_1.07.2_BASIC": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.07.2_BASIC"),
+    "Factur-X_1.07.2_EN16931": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.07.2_EN16931")
+}
 
-    default_selected = [
-        s for s in all_schemas
-        if os.path.basename(s) in ["Factur-X_1.07.2_BASIC.xsd", "Factur-X_1.07.2_EN16931.xsd"]
-    ]
-
-    schema_choices = [(x, f"{i+1}. {os.path.basename(x)}") for i, x in enumerate(all_schemas)]
+schema_choices = [(key, key.replace("_", " ")) for key in available_schema_folders]
 
     if request.method == "POST":
         file = request.files["pdf_file"]
-        selected_schemas = request.form.getlist("schemas")
-        if not selected_schemas:
-            selected_schemas = default_selected
+        selected_schema_keys = request.form.getlist("schemas")
+        if not selected_schema_keys:
+            selected_schema_keys = ["Factur-X_1.07.2_BASIC", "Factur-X_1.07.2_EN16931"]
+        selected_schemas = []
+        for key in selected_schema_keys:
+            schema_folder = available_schema_folders.get(key)
+            if schema_folder:
+                selected_schemas.extend(list_all_xsd_files(schema_folder))
 
         if file and selected_schemas:
             filename = file.filename
