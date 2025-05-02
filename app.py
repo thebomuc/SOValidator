@@ -229,12 +229,17 @@ def index():
                 for pattern, allowed_set, label in codelist_checks:
                     for match in re.finditer(pattern, xml):
                         value = match.group(1).strip()
-                        if value not in allowed_values:
-    			suggestion = ""
-    			if value.upper() in allowed_values:
-        			suggestion = f" Möglicherweise meinten Sie „{value.upper()}“."
-    			elif value.lower() in allowed_values:
-        			suggestion = f" Möglicherweise meinten Sie „{value.lower()}“."
+			if value not in allowed_set:
+				suggestion = ""
+				if value.upper() in allowed_set:
+					suggestion = f" Möglicherweise meinten Sie „{value.upper()}“."
+    				elif value.lower() in allowed_set:
+        				suggestion = f" Möglicherweise meinten Sie „{value.lower()}“."
+
+    				codelist_table.append({
+					"label": label,
+        				"value": value + suggestion
+                        	})
 
     			issues.append({
         			"label": label,
