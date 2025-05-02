@@ -225,7 +225,8 @@ def index():
 
                                 codelist_table.append({
                                     "label": label,
-                                    "value": value + suggestion,
+                                    "value": value,
+                                    "suggestion": suggestion,
                                     "line": lineno,
                                     "column": line.find(value) + 1
                                 })
