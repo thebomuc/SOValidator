@@ -30,7 +30,7 @@ codelists = {
     "EAS": "AES",
     "VATEX": "CODE",
     "Unit": "Code",
-    "Characteristic": "Code list",
+#    "Characteristic": "Code list",
     "Line Status": "Code",
     "LineReason": "Code",
     "INCOTERMS": "Code",
