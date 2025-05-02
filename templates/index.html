@@ -63,21 +63,6 @@
     </div>
     {% endif %}
 
-    <div class="form-group" style="margin-top: 1em;">
-  <label for="schemas"><strong>Gegen welche Schemas soll geprüft werden?</strong></label>
-  <select name="schemas" multiple class="form-control" style="height: 12em; width: 100%;">
-    {% for value, label in schema_choices %}
-      <option value="{{ value }}" {% if value in request.form.getlist('schemas') or not request.form %}selected{% endif %}>
-        {{ label }}
-      </option>
-    {% endfor %}
-  </select>
-  <small class="form-text text-muted">
-    Halte <kbd>Strg</kbd> (Windows) oder <kbd>Cmd</kbd> (Mac), um mehrere auszuwählen.
-  </small>
-</div>
-
-
     {% if result %}
     <div class="box">
         <h2>🔎 Ergebnis</h2>
