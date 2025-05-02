@@ -186,7 +186,7 @@ def index():
             result = "❌ Keine Datei ausgewählt oder hochgeladen."
             return render_template("index.html",
                                    result=result,
-                                   
+                                   filename=filename,
                                    excerpt=excerpt,
                                    highlight_line=highlight_line,
                                    suggestion="<br>".join(suggestions),
