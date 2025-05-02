@@ -21,8 +21,10 @@
   {% if codelist_table %}
     <h3>Codelistenverletzungen</h3>
     <form method="post">
-      <input type="hidden" name="raw_xml" value="{{ raw_xml|tojson }}">
-      <input type="hidden" name="raw_table" value="{{ raw_table|tojson }}">
+      <!-- WICHTIG: tojson + safe -->
+      <input type="hidden" name="raw_xml" value='{{ raw_xml | tojson | safe }}'>
+      <input type="hidden" name="raw_table" value='{{ raw_table | tojson | safe }}'>
+
       <table border="1" cellpadding="6">
         <thead>
           <tr>
