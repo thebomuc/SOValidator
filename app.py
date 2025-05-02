@@ -17,56 +17,51 @@ EXCEL_PATH = "static/data/4. EN16931+FacturX code lists values v14 - used from 2
 # Code-Listen vorbereiten
 codelists = {
     "Country": "Alpha-2 code",
-	"Currency": "Alphabetic Code",
-	"ICD": "Code",
-	"1001": "Code",
+    "Currency": "Alphabetic Code",
+    "ICD": "Code",
+    "1001": "Code",
     "1153": "Code Values",
-	"VAT CAT": "Code",	
-    "Text": "Code",	
-    "Payment": "Code",	
-	"5305": "Code",
+    "VAT CAT": "Code",
+    "Text": "Code",
+    "Payment": "Code",
+    "5305": "Code",
     "Allowance": "Code",
     "Item": "Code",
     "Charge": "Code",
-	"MIME": "Code",
-	"EAS": "AES",
+    "MIME": "Code",
+    "EAS": "AES",
     "VATEX": "CODE",
-	"Unit": "Code",
-	"Line Status": "Code",
+    "Unit": "Code",
+    "Line Status": "Code",
     "Language": "Code",
-	"Characteristic": "Code",
-	"Line Reason": "Code",
-	"INCOTERMS": "Code",
-	"TRANSPORT": "Code",
-	"Date": "Code",
-	"HybridDocument": "Code",
-	"HybridConformance": "Code",
-	"Filename": "Code",
-	"HybridVersion": "Code",
+    "Characteristic": "Code",
+    "Line Reason": "Code",
+    "INCOTERMS": "Code",
+    "TRANSPORT": "Code",
+    "Date": "Code",
+    "HybridDocument": "Code",
+    "HybridConformance": "Code",
+    "Filename": "Code",
+    "HybridVersion": "Code",
 }
 code_sets = {}
 
 for sheet, column in codelists.items():
     try:
-        # Versuche, das Blatt mit Header zu laden (für strukturierte Tabellen)
         df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
         df.columns = df.columns.str.strip()
 
         if column in df.columns:
             values = df[column].dropna().astype(str).str.strip().unique()
             code_sets[sheet] = set(values)
-            print(f"✅ {sheet}: {len(values)} Werte geladen aus Spalte '{column}'")
         else:
-            # Wenn Spalte nicht existiert – versuche Fallback: alles flach lesen
-            print(f"⚠️ Spalte '{column}' nicht gefunden in Blatt '{sheet}'. Verwende Fallback.")
             df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl", header=None)
             flat = df.values.flatten()
             cleaned = set(str(v).strip() for v in flat if pd.notnull(v))
             code_sets[sheet] = cleaned
-            print(f"✅ {sheet}: {len(cleaned)} Werte geladen (Fallback ohne Header)")
 
     except Exception as e:
-        print(f"❌ Fehler beim Laden von '{sheet}': {e}")
+        print(f"Fehler beim Laden von '{sheet}': {e}")
 
 
 def list_all_xsd_files(schema_root):
@@ -80,11 +75,9 @@ def list_all_xsd_files(schema_root):
 
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
-    print(f"📦 Anzahl eingebetteter Dateien: {doc.embfile_count()}")
     for i in range(doc.embfile_count()):
         info = doc.embfile_info(i)
         name = info.get("filename", "").lower()
-        print(f"📄 Gefunden: {name}")
         if name.endswith(".xml"):
             xml_bytes = doc.embfile_get(i)
             try:
@@ -135,17 +128,6 @@ def validate_xml(xml_content):
         return False, "❌ XML enthält Syntaxfehler:", [], None, suggestions
     else:
         return True, "✔️ XML ist wohlgeformt.", [], None, None
-
-
-def detect_nonstandard_tags(xml_content):
-    known_tags = {"ID", "Name", "CityName", "PostcodeCode", "LineOne", "StreetName", "Country", "URIID"}
-    nonstandard = set()
-    tag_pattern = re.compile(r"<(/?)(ram:)(\w+)")
-    for match in tag_pattern.findall(xml_content):
-        tagname = match[2]
-        if tagname not in known_tags:
-            nonstandard.add(tagname)
-    return sorted(nonstandard)
 
 
 def validate_against_all_xsds(xml_content, schema_root):
@@ -216,6 +198,7 @@ def index():
                             suggestions.append(f"❌ {msg}")
 
                 xml_lines = xml.splitlines()
+
                 codelist_checks = [
                     (r"<ram:CurrencyCode>(.*?)</ram:CurrencyCode>", code_sets.get("Currency", set()), "CurrencyCode"),
                     (r"<ram:CountryID>(.*?)</ram:CountryID>", code_sets.get("Country", set()), "CountryID"),
@@ -226,31 +209,36 @@ def index():
                     (r"<ram:AllowanceReasonCode>(.*?)</ram:AllowanceReasonCode>", code_sets.get("Allowance", set()), "AllowanceReasonCode"),
                     (r"<ram:ChargeReasonCode>(.*?)</ram:ChargeReasonCode>", code_sets.get("Charge", set()), "ChargeReasonCode"),
                 ]
-		xml_lines = xml.splitlines()
 
-		for pattern, allowed_set, label in codelist_checks:
-		regex = re.compile(pattern)
- 		for lineno, line in enumerate(xml_lines, start=1):
-      		    match = regex.search(line)
-       		    if match:
-            		value = match.group(1).strip()
-        		if value not in allowed_set:
-              		    suggestion = ""
-            		    if value.upper() in allowed_set:
-              		        suggestion = f" Möglicherweise meinten Sie „{value.upper()}“."
-           		    elif value.lower() in allowed_set:
-              		        suggestion = f" Möglicherweise meinten Sie „{value.lower()}“."
+                for pattern, allowed_set, label in codelist_checks:
+                    regex = re.compile(pattern)
+                    for lineno, line in enumerate(xml_lines, start=1):
+                        match = regex.search(line)
+                        if match:
+                            value = match.group(1).strip()
+                            if value not in allowed_set:
+                                suggestion = ""
+                                if value.upper() in allowed_set:
+                                    suggestion = f" Möglicherweise meinten Sie „{value.upper()}“."
+                                elif value.lower() in allowed_set:
+                                    suggestion = f" Möglicherweise meinten Sie „{value.lower()}“."
 
-                            codelist_table.append({
-                                "label": label,
-                                "value": value + suggestion,
-                                "line": lineno,
-                                "column": line.find(value) + 1  # einfacher Zeichenindex
-                            })
+                                codelist_table.append({
+                                    "label": label,
+                                    "value": value + suggestion,
+                                    "line": lineno,
+                                    "column": line.find(value) + 1
+                                })
 
                 if request.form.get("nonstandard"):
-                    nonstandard_tags = detect_nonstandard_tags(xml)
-                    for tag in nonstandard_tags:
+                    tag_pattern = re.compile(r"<(/?)(ram:)(\w+)")
+                    known_tags = {"ID", "Name", "CityName", "PostcodeCode", "LineOne", "StreetName", "Country", "URIID"}
+                    nonstandard_tags = set()
+                    for match in tag_pattern.findall(xml):
+                        tagname = match[2]
+                        if tagname not in known_tags:
+                            nonstandard_tags.add(tagname)
+                    for tag in sorted(nonstandard_tags):
                         suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
 
     codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
