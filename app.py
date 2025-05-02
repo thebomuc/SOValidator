@@ -30,7 +30,6 @@ codelists = {
     "EAS": "AES",
     "VATEX": "CODE",
     "Unit": "Code",
-    "Line Status": "Code",
     "Characteristic": "Code",
     "LineReason": "Code",
     "INCOTERMS": "Code",
@@ -39,7 +38,7 @@ codelists = {
     "HybridDocument": "Code",
     "HybridConformance": "Code",
     "Filename": "Code",
-    "HybridVersion": "Code",
+    "HybridVersion": "Code"
 }
 code_sets = {}
 try:
