@@ -60,10 +60,12 @@ def validate_xml(xml_content):
 
         for err in parser.error_log:
             excerpt, _ = extract_code_context(xml_lines, err.line)
-            error_line = excerpt[err.line - max(0, err.line - 3) - 1]
-            excerpt[err.line - max(0, err.line - 3) - 1] = (
-                f"<span style='color:red;font-weight:bold;text-decoration:underline'>{error_line}</span>"
-            )
+            error_line_index = err.line - max(0, err.line - 3) - 1
+            if 0 <= error_line_index < len(excerpt):
+                line_content = excerpt[error_line_index]
+                excerpt[error_line_index] = (
+                    f"<span style='color:red;font-weight:bold;text-decoration:underline'>{line_content}</span>"
+                )
             error_msg = (
                 f"❌ Zeile {err.line}, Spalte {err.column}: {err.message}<br>"
                 + "<br>".join(excerpt)
