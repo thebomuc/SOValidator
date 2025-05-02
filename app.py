@@ -48,15 +48,33 @@ def extract_code_context(xml_lines, error_line, context=2):
     return excerpt, error_line - start - 1
 
 def validate_xml(xml_content):
+    parser = etree.XMLParser(recover=True)
     try:
-        etree.fromstring(xml_content.encode("utf-8"))
-        return True, "✔️ XML ist wohlgeformt.", None, None
-    except etree.XMLSyntaxError as e:
-        msg = str(e)
-        line = e.position[0]
+        etree.fromstring(xml_content.encode("utf-8"), parser)
+    except etree.XMLSyntaxError:
+        pass  # Fehler werden über error_log behandelt
+
+    if parser.error_log:
+        suggestions = []
         xml_lines = xml_content.splitlines()
-        excerpt, highlight_line = extract_code_context(xml_lines, line)
-        return False, msg, excerpt, highlight_line
+
+        for err in parser.error_log:
+            excerpt, highlight_line = extract_code_context(xml_lines, err.line)
+            # Fehlerhafte Zeile fett/rot hervorheben
+            error_line = excerpt[highlight_line]
+            excerpt[highlight_line] = (
+                f"<span style='color:red;font-weight:bold;text-decoration:underline'>{error_line}</span>"
+            )
+            # Formatierte Fehlerausgabe
+            error_msg = (
+                f"❌ Zeile {err.line}, Spalte {err.column}: {err.message}<br>"
+                + "<br>".join(excerpt)
+            )
+            suggestions.append(error_msg)
+
+        return False, "❌ XML enthält Syntaxfehler:", None, suggestions
+    else:
+        return True, "✔️ XML ist wohlgeformt.", None, None
 
 def detect_nonstandard_tags(xml_content):
     known_tags = {"ID", "Name", "CityName", "PostcodeCode", "LineOne", "StreetName", "Country", "URIID"}
@@ -141,13 +159,10 @@ def index():
             if not xml:
                 result = "❌ Keine XML-Datei in der PDF gefunden."
             else:
-                valid, msg, excerpt, highlight_line = validate_xml(xml)
+                valid, msg, excerpt, xml_suggestions = validate_xml(xml)
                 result = f"<span style='color:orange;font-weight:bold'>{msg}</span>"
-                if not valid:
-                    if "not closed" in msg:
-                        suggestions.append("💡 Vorschlag: Fehlender schließender Tag. Bitte prüfen Sie, ob z. B. ein </Tag> fehlt.")
-                    if "expected '>'" in msg:
-                        suggestions.append("💡 Vorschlag: Tag nicht korrekt abgeschlossen. Möglicherweise fehlt ein >")
+                if xml_suggestions:
+                    suggestions.extend(xml_suggestions)
                 elif valid:
                     xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
                     result += "<br><span style='color:darkorange'>" + xsd_msg + "</span>"
