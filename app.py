@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
 import fitz  # PyMuPDF
 from lxml import etree
 import os
@@ -13,6 +13,7 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
 DEFAULT_XSD_ROOT = "ZF232_DE/Schema"
 DEFAULT_XSLT_PATH = "EN16931-CII-validation.xslt"
 EXCEL_PATH = "static/data/4. EN16931+FacturX code lists values v14 - used from 2024-11-15.xlsx"
+CORRECTED_PDF_PATH = "static/data/corrected_invoice.pdf"
 
 # Code-Listen vorbereiten
 codelists = {
@@ -76,12 +77,23 @@ def extract_xml_from_pdf(pdf_path):
     return None
 
 
+def embed_xml_in_pdf(original_pdf_path, xml_str, output_pdf_path):
+    doc = fitz.open(original_pdf_path)
+    for i in range(doc.embfile_count()):
+        info = doc.embfile_info(i)
+        if info.get("filename", "").endswith(".xml"):
+            doc.embfile_del(i)
+    doc.embfile_add("factur-x.xml", xml_str.encode("utf-8"))
+    doc.save(output_pdf_path)
+    doc.close()
+
+
 def apply_corrections_to_xml(xml_content, corrections):
     for correction in corrections:
         original = correction['value']
         suggestion = correction['suggestion']
         if suggestion:
-            value_only = original.split(" ")[0]  # Entfernt Vorschlagstext
+            value_only = original.split(" ")[0]
             xml_content = re.sub(f'>{value_only}<', f'>{suggestion}<', xml_content)
     return xml_content
 
@@ -95,13 +107,17 @@ def index():
     codelist_table = []
     syntax_table = []
     corrected_xml = None
+    show_download = False
 
     if request.method == "POST":
         if "fix_all" in request.form:
             xml = request.form.get("raw_xml", "")
-            codelist_table = eval(request.form.get("raw_table", "[]"))  # Achtung: bei Bedarf absichern!
+            import json
+            codelist_table = json.loads(request.form.get("raw_table", "[]"))
             corrected_xml = apply_corrections_to_xml(xml, codelist_table)
+            embed_xml_in_pdf("uploaded.pdf", corrected_xml, CORRECTED_PDF_PATH)
             result = "✔️ Alle vorgeschlagenen Korrekturen wurden übernommen."
+            show_download = True
         else:
             file = request.files.get("pdf_file")
             if file:
@@ -153,7 +169,13 @@ def index():
                            raw_xml=xml if request.method == "POST" else "",
                            raw_table=codelist_table,
                            corrected_xml=corrected_xml,
+                           show_download=show_download,
                            codelisten_hinweis="Codelistenprüfung basierend auf Excel-Vorgabe")
+
+
+@app.route("/download")
+def download():
+    return send_file(CORRECTED_PDF_PATH, as_attachment=True)
 
 
 app.add_url_rule("/", "index", index, methods=["GET", "POST"])
