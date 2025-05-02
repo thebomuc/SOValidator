@@ -197,8 +197,6 @@ def index():
                         for msg in sch_issues:
                             suggestions.append(f"❌ {msg}")
 
-                xml_lines = xml.splitlines()
-
                 codelist_checks = [
                     (r"<ram:CurrencyCode>(.*?)</ram:CurrencyCode>", code_sets.get("Currency", set()), "CurrencyCode"),
                     (r"<ram:CountryID>(.*?)</ram:CountryID>", code_sets.get("Country", set()), "CountryID"),
@@ -212,24 +210,26 @@ def index():
 
                 for pattern, allowed_set, label in codelist_checks:
                     regex = re.compile(pattern)
-                    for lineno, line in enumerate(xml_lines, start=1):
-                        match = regex.search(line)
-                        if match:
-                            value = match.group(1).strip()
-                            if value not in allowed_set:
-                                suggestion = ""
-                                if value.upper() in allowed_set:
-                                    suggestion = f" Möglicherweise meinten Sie „{value.upper()}“."
-                                elif value.lower() in allowed_set:
-                                    suggestion = f" Möglicherweise meinten Sie „{value.lower()}“."
+                    for match in regex.finditer(xml):
+                        value = match.group(1).strip()
+                        if value not in allowed_set:
+                            suggestion = ""
+                            if value.upper() in allowed_set:
+                                suggestion = f" Möglicherweise meinten Sie „{value.upper()}“."
+                            elif value.lower() in allowed_set:
+                                suggestion = f" Möglicherweise meinten Sie „{value.lower()}“."
 
-                                codelist_table.append({
-                                    "label": label,
-                                    "value": value,
-                                    "suggestion": suggestion,
-                                    "line": lineno,
-                                    "column": match.start(1) + 1  # Position im gesamten XML, 1-basiert
-                                })
+                            start_pos = match.start(1)
+                            line_no = xml.count("\n", 0, start_pos) + 1
+                            col_no = start_pos - xml.rfind("\n", 0, start_pos)
+
+                            codelist_table.append({
+                                "label": label,
+                                "value": value,
+                                "suggestion": suggestion,
+                                "line": line_no,
+                                "column": col_no
+                            })
 
                 if request.form.get("nonstandard"):
                     tag_pattern = re.compile(r"<(/?)(ram:)(\w+)")
