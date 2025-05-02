@@ -1,148 +1,62 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>SOValidator</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 2em;
-            background-color: #f8f8f8;
-        }
-        h1, h2 {
-            color: #333;
-        }
-        .box {
-            background: #fff;
-            padding: 1em;
-            border-radius: 8px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.1);
-            margin-bottom: 2em;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 1em;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 0.5em;
-        }
-        th {
-            background-color: #eee;
-            text-align: left;
-        }
-        .highlight {
-            color: red;
-            font-weight: bold;
-        }
-        pre {
-            background: #f4f4f4;
-            padding: 0.5em;
-            overflow-x: auto;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>SOValidator</title>
 </head>
 <body>
-    <h1>SOValidator – PDF/XML Validierung</h1>
+  <h1>SOValidator</h1>
 
-    <form method="POST" enctype="multipart/form-data">
-        <div class="box">
-            <label>PDF-Datei mit eingebetteter XML hochladen:</label><br><br>
-            <input type="file" name="pdf_file" required>
-            <br><br>
-            <label><input type="checkbox" name="schematron"> Schematron-Prüfung aktivieren</label><br>
-            <label><input type="checkbox" name="nonstandard"> Nicht-standardisierte Tags anzeigen</label><br><br>
-            <button type="submit">Prüfen</button>
-        </div>
-    </form>
-
-    {% if filename %}
-    <div class="box">
-        <h2>📄 Datei: {{ filename }}</h2>
-    </div>
-    {% endif %}
-
-    {% if result %}
-    <div class="box">
-        <h2>🔎 Ergebnis</h2>
-        <div>{{ result|safe }}</div>
-    </div>
-    {% endif %}
-
-    {% if excerpt %}
-    <div class="box">
-        <h3>🔍 XML-Auszug mit markierter Zeile</h3>
-        <pre>
-{% for line in excerpt %}
-{{ line|safe }}
-{% endfor %}
-        </pre>
-    </div>
-    {% endif %}
-
-    {% if suggestion %}
-    <div class="box">
-        <h3>💡 Hinweise</h3>
-        <div>{{ suggestion|safe }}</div>
-    </div>
-    {% endif %}
-
-{% if codelist_table %}
-  <h3>Codelistenverletzungen</h3>
-  <form method="post">
-    <table border="1" cellpadding="6">
-      <thead>
-        <tr>
-          <th>Feld</th>
-          <th>Wert</th>
-          <th>Zeile</th>
-          <th>Vorschlag</th>
-          <th>Korrigieren?</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for entry in codelist_table %}
-          <tr>
-            <td>{{ entry.label }}</td>
-            <td>{{ entry.value }}</td>
-            <td>{{ entry.line }}</td>
-            <td>{{ entry.suggestion or "-" }}</td>
-            <td>
-              {% if entry.suggestion %}
-                <button type="submit" name="fix_single" value="{{ loop.index0 }}">✔ Nur diesen</button>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <br>
-    <button type="submit" name="fix_all" value="1">✔ Alle Vorschläge übernehmen</button>
-    <input type="hidden" name="action" value="apply_fixes">
+  <form method="post" enctype="multipart/form-data">
+    <label>PDF mit eingebetteter XML hochladen:</label>
+    <input type="file" name="pdf_file" required>
+    <button type="submit">Prüfen</button>
   </form>
-{% endif %}
 
+  {% if result %}
+    <h3>Ergebnis</h3>
+    <p>{{ result|safe }}</p>
+  {% endif %}
 
-    {% if syntax_table %}
-    <div class="box">
-        <h3>🧾 XML-Syntaxfehler</h3>
-        <table>
-            <thead>
-                <tr><th style="width:5%;">Typ</th><th>Fehlerbeschreibung</th></tr>
-            </thead>
-            <tbody>
-                {% for item in syntax_table %}
-                <tr>
-                    <td style="text-align:center;">❌</td>
-                    <td>{{ item|safe }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
+  {% if codelist_table %}
+    <h3>Codelistenverletzungen</h3>
+    <form method="post">
+      <input type="hidden" name="raw_xml" value="{{ raw_xml|tojson }}">
+      <input type="hidden" name="raw_table" value="{{ raw_table|tojson }}">
+      <table border="1" cellpadding="6">
+        <thead>
+          <tr>
+            <th>Feld</th>
+            <th>Wert</th>
+            <th>Zeile</th>
+            <th>Vorschlag</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in codelist_table %}
+            <tr>
+              <td>{{ entry.label }}</td>
+              <td>{{ entry.value }}</td>
+              <td>{{ entry.line }}</td>
+              <td>
+                {% if entry.suggestion %}
+                  {{ entry.suggestion }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <br>
+      <button type="submit" name="fix_all" value="1">✔ Alle Vorschläge übernehmen</button>
+    </form>
+  {% endif %}
+
+  {% if corrected_xml %}
+    <h3>Korrigiertes XML (Ausschnitt)</h3>
+    <pre style="max-height: 400px; overflow: auto;">{{ corrected_xml|e }}</pre>
+  {% endif %}
 </body>
 </html>
