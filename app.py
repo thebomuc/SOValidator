@@ -1,24 +1,23 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session
 import fitz  # PyMuPDF
 from lxml import etree
 import os
 import re
 import pandas as pd
-from openpyxl import load_workbook
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
+app.secret_key = "supersecret"  # notwendig für Session
 
-# Feste Pfade
+# Pfade
 DEFAULT_XSD_ROOT = "ZF232_DE/Schema"
-DEFAULT_XSLT_PATH = "EN16931-CII-validation.xslt"
 EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.xlsx"
+DEFAULT_XSLT_PATH = "EN16931-CII-validation.xslt"
 
-# Code-Listen vorbereiten
+# Lade Codelisten
 codelists = {
     "Currency": "Alphabetic Code",
     "Country": "Alpha-2 code",
-  
     "5305": "Code",
     "VATEX": "CODE",
     "1153": "Code Values",
@@ -32,8 +31,7 @@ try:
         df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
         code_sets[sheet] = set(df[column].dropna().astype(str).str.strip().unique())
 except Exception as e:
-    print("⚠️ Fehler beim Vorladen der Codelisten:", e)
-
+    print("⚠️ Fehler beim Laden der Codelisten:", e)
 
 def list_all_xsd_files(schema_root):
     xsd_files = []
@@ -43,28 +41,18 @@ def list_all_xsd_files(schema_root):
                 xsd_files.append(os.path.join(root, file))
     return xsd_files
 
-
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
-    print(f"📦 Anzahl eingebetteter Dateien: {doc.embfile_count()}")
     for i in range(doc.embfile_count()):
         info = doc.embfile_info(i)
         name = info.get("filename", "").lower()
-        print(f"📄 Gefunden: {name}")
         if name.endswith(".xml"):
             xml_bytes = doc.embfile_get(i)
             try:
                 return xml_bytes.decode("utf-8")
             except UnicodeDecodeError:
                 return xml_bytes.decode("latin1")
-    if doc.embfile_count() > 0:
-        xml_bytes = doc.embfile_get(0)
-        try:
-            return xml_bytes.decode("utf-8")
-        except UnicodeDecodeError:
-            return xml_bytes.decode("latin1")
     return None
-
 
 def extract_code_context(xml_lines, error_line, context=2):
     start = max(0, error_line - context - 1)
@@ -72,18 +60,15 @@ def extract_code_context(xml_lines, error_line, context=2):
     excerpt = xml_lines[start:end]
     return excerpt, error_line - start - 1
 
-
 def validate_xml(xml_content):
     parser = etree.XMLParser(recover=True)
     try:
         etree.fromstring(xml_content.encode("utf-8"), parser)
     except etree.XMLSyntaxError:
         pass
-
     if parser.error_log:
         suggestions = []
         xml_lines = xml_content.splitlines()
-
         for err in parser.error_log:
             excerpt, _ = extract_code_context(xml_lines, err.line)
             error_line_index = err.line - max(0, err.line - 3) - 1
@@ -92,27 +77,10 @@ def validate_xml(xml_content):
                 excerpt[error_line_index] = (
                     f"<span style='color:red;font-weight:bold;text-decoration:underline'>{line_content}</span>"
                 )
-            error_msg = (
-                f"❌ Zeile {err.line}, Zeichen {err.column}: {err.message}<br>"
-                + "<br>".join(excerpt)
-            )
-            suggestions.append(error_msg)
-
+            suggestions.append(f"❌ Zeile {err.line}, Zeichen {err.column}: {err.message}<br>" + "<br>".join(excerpt))
         return False, "❌ XML enthält Syntaxfehler:", [], None, suggestions
     else:
         return True, "✔️ XML ist wohlgeformt.", [], None, None
-
-
-def detect_nonstandard_tags(xml_content):
-    known_tags = {"ID", "Name", "CityName", "PostcodeCode", "LineOne", "StreetName", "Country", "URIID"}
-    nonstandard = set()
-    tag_pattern = re.compile(r"<(/?)(ram:)(\w+)")
-    for match in tag_pattern.findall(xml_content):
-        tagname = match[2]
-        if tagname not in known_tags:
-            nonstandard.add(tagname)
-    return sorted(nonstandard)
-
 
 def validate_against_selected_xsds(xml_content, selected_schemas):
     results = []
@@ -133,19 +101,6 @@ def validate_against_selected_xsds(xml_content, selected_schemas):
             results.append(f"❌ Fehler bei {os.path.basename(xsd_path)}:<pre>{e}</pre>")
     return success, "<br>".join(results)
 
-
-def validate_with_schematron(xml_content, xslt_path):
-    try:
-        xml_doc = etree.fromstring(xml_content.encode("utf-8"))
-        xslt_doc = etree.parse(xslt_path)
-        transform = etree.XSLT(xslt_doc)
-        svrl = transform(xml_doc)
-        failed = svrl.xpath("//svrl:failed-assert", namespaces={"svrl": "http://purl.oclc.org/dsdl/svrl"})
-        return [fa.find("svrl:text", namespaces={"svrl": "http://purl.oclc.org/dsdl/svrl"}).text for fa in failed]
-    except Exception as e:
-        return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
-
-
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = ""
@@ -157,22 +112,22 @@ def index():
     syntax_table = []
 
     available_schema_folders = {
-    "Factur-X_1.07.2_BASIC": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.07.2_BASIC"),
-    "Factur-X_1.07.2_EN16931": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.07.2_EN16931")
-}
-
-schema_choices = [(key, key.replace("_", " ")) for key in available_schema_folders]
+        "Factur-X_1.07.2_BASIC": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.07.2_BASIC"),
+        "Factur-X_1.07.2_EN16931": os.path.join(DEFAULT_XSD_ROOT, "Factur-X_1.07.2_EN16931"),
+    }
+    schema_choices = [(key, key.replace("_", " ")) for key in available_schema_folders]
 
     if request.method == "POST":
-        file = request.files["pdf_file"]
+        file = request.files.get("pdf_file")
         selected_schema_keys = request.form.getlist("schemas")
         if not selected_schema_keys:
             selected_schema_keys = ["Factur-X_1.07.2_BASIC", "Factur-X_1.07.2_EN16931"]
+
         selected_schemas = []
         for key in selected_schema_keys:
-            schema_folder = available_schema_folders.get(key)
-            if schema_folder:
-                selected_schemas.extend(list_all_xsd_files(schema_folder))
+            folder = available_schema_folders.get(key)
+            if folder:
+                selected_schemas.extend(list_all_xsd_files(folder))
 
         if file and selected_schemas:
             filename = file.filename
@@ -186,49 +141,14 @@ schema_choices = [(key, key.replace("_", " ")) for key in available_schema_folde
                 result = f"<span style='color:black'>{msg}</span>"
                 if xml_suggestions:
                     syntax_table = xml_suggestions
-
                 if valid:
                     xsd_ok, xsd_msg = validate_against_selected_xsds(xml, selected_schemas)
                     result += "<br><span style='color:black'>" + xsd_msg + "</span>"
 
-                    if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
-                        sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
-                        for msg in sch_issues:
-                            suggestions.append(f"❌ {msg}")
-
-                xml_lines = xml.splitlines()
-                codelist_checks = [
-                    (r"<ram:CurrencyCode>(.*?)</ram:CurrencyCode>", code_sets.get("Currency", set()), "CurrencyCode"),
-                    (r"<ram:CountryID>(.*?)</ram:CountryID>", code_sets.get("Country", set()), "CountryID"),
-                    (r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", code_sets.get("5305", set()), "CategoryCode"),
-                    (r"<ram:TaxExemptionReasonCode>(.*?)</ram:TaxExemptionReasonCode>", code_sets.get("VATEX", set()), "VATEX"),
-                    (r"<ram:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>", code_sets.get("1001", set()), "DocumentType (1001)"),
-                    (r"<ram:FunctionCode>(.*?)</ram:FunctionCode>", code_sets.get("1153", set()), "FunctionCode (1153)"),
-                    (r"<ram:AllowanceReasonCode>(.*?)</ram:AllowanceReasonCode>", code_sets.get("Allowance", set()), "AllowanceReasonCode"),
-                    (r"<ram:ChargeReasonCode>(.*?)</ram:ChargeReasonCode>", code_sets.get("Charge", set()), "ChargeReasonCode"),
-                ]
-                for pattern, allowed_set, label in codelist_checks:
-                    for match in re.finditer(pattern, xml):
-                        value = match.group(1).strip()
-                        if value not in allowed_set:
-                            start_index = match.start(1)
-                            before = xml[:start_index]
-                            line = before.count("\n") + 1
-                            col = start_index - before.rfind("\n")
-                            codelist_table.append({
-                                "label": label,
-                                "value": value,
-                                "line": line,
-                                "column": col
-                            })
-
-                if request.form.get("nonstandard"):
-                    nonstandard_tags = detect_nonstandard_tags(xml)
-                    for tag in nonstandard_tags:
-                        suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
+        # Session speichern
+        session['selected_schemas'] = selected_schema_keys
 
     codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
-
     legend = """<div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
 <span style='color:red;font-weight:bold'>❌ Fehler</span><br>
@@ -237,16 +157,16 @@ schema_choices = [(key, key.replace("_", " ")) for key in available_schema_folde
 </div>"""
 
     return render_template("index.html",
-                           result=result + legend,
-                           filename=filename,
-                           excerpt=excerpt,
-                           highlight_line=highlight_line,
-                           suggestion="<br>".join(suggestions),
-                           syntax_table=syntax_table,
-                           codelist_table=codelist_table,
-                           codelisten_hinweis=codelisten_hinweis,
-                           schema_choices=schema_choices)
-
+        result=result + legend,
+        filename=filename,
+        excerpt=excerpt,
+        highlight_line=highlight_line,
+        suggestion="<br>".join(suggestions),
+        syntax_table=syntax_table,
+        codelist_table=codelist_table,
+        codelisten_hinweis=codelisten_hinweis,
+        schema_choices=schema_choices
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
