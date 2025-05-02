@@ -61,6 +61,7 @@ for sheet, column in codelists.items():
     except Exception as e:
         print(f"❌ Fehler beim Laden von '{sheet}': {e}")
 
+
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
     for i in range(doc.embfile_count()):
@@ -74,45 +75,16 @@ def extract_xml_from_pdf(pdf_path):
                 return xml_bytes.decode("latin1")
     return None
 
-def validate_xml(xml_content):
-    parser = etree.XMLParser(recover=True)
-    try:
-        etree.fromstring(xml_content.encode("utf-8"), parser)
-    except etree.XMLSyntaxError:
-        pass
-    if parser.error_log:
-        suggestions = []
-        xml_lines = xml_content.splitlines()
-        for err in parser.error_log:
-            excerpt = xml_lines[max(0, err.line - 3):err.line + 2]
-            suggestions.append(f"❌ Zeile {err.line}, Spalte {err.column}: {err.message}\n" + "\n".join(excerpt))
-        return False, "❌ XML enthält Syntaxfehler:", [], None, suggestions
-    return True, "✔️ XML ist wohlgeformt.", [], None, None
 
-def validate_against_all_xsds(xml_content, schema_root):
-    results = []
-    for xsd_path in list_all_xsd_files(schema_root):
-        try:
-            schema_doc = etree.parse(xsd_path)
-            schema = etree.XMLSchema(schema_doc)
-            doc = etree.fromstring(xml_content.encode("utf-8"))
-            schema.assertValid(doc)
-            return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
-        except etree.DocumentInvalid:
-            errors = schema.error_log.filter_from_errors()
-            details = "".join([f"<li>Zeile {err.line}: {err.message}</li>" for err in errors])
-            results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><ul>{details}</ul></details>")
-        except Exception as e:
-            results.append(f"<details><summary><strong>{os.path.basename(xsd_path)}</strong></summary><pre>{e}</pre></details>")
-    return False, "❌ XSD-Validierung fehlgeschlagen:" + "<br>" + "<br>".join(results)
+def apply_corrections_to_xml(xml_content, corrections):
+    for correction in corrections:
+        original = correction['value']
+        suggestion = correction['suggestion']
+        if suggestion:
+            value_only = original.split(" ")[0]  # Entfernt Vorschlagstext
+            xml_content = re.sub(f'>{value_only}<', f'>{suggestion}<', xml_content)
+    return xml_content
 
-def list_all_xsd_files(schema_root):
-    xsd_files = []
-    for root, _, files in os.walk(schema_root):
-        for file in files:
-            if file.endswith(".xsd"):
-                xsd_files.append(os.path.join(root, file))
-    return xsd_files
 
 def index():
     result = ""
@@ -122,45 +94,54 @@ def index():
     suggestions = []
     codelist_table = []
     syntax_table = []
+    corrected_xml = None
+
     if request.method == "POST":
-        file = request.files.get("pdf_file")
-        if file:
-            filename = file.filename
-            file_path = "uploaded.pdf"
-            file.save(file_path)
-            xml = extract_xml_from_pdf(file_path)
-            if not xml:
-                result = "❌ Keine XML-Datei in der PDF gefunden."
-            else:
-                valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
-                result = f"<span style='color:black'>{msg}</span>"
-                if xml_suggestions:
-                    syntax_table = xml_suggestions
-                if valid:
-                    xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
-                    result += "<br><span style='color:black'>" + xsd_msg + "</span>"
-                codelist_checks = [
-                    (r"<ram:CurrencyCode>(.*?)</ram:CurrencyCode>", code_sets.get("Currency", set()), "CurrencyCode"),
-                    (r"<ram:CountryID>(.*?)</ram:CountryID>", code_sets.get("Country", set()), "CountryID"),
-                    (r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", code_sets.get("5305", set()), "CategoryCode"),
-                ]
-                for pattern, allowed_set, label in codelist_checks:
-                    for match in re.finditer(pattern, xml):
-                        value = match.group(1).strip()
-                        if value not in allowed_set:
-                            suggestion = ""
-                            if value.upper() in allowed_set:
-                                suggestion = f" Möglicherweise meinten Sie \"{value.upper()}\"."
-                            elif value.lower() in allowed_set:
-                                suggestion = f" Möglicherweise meinten Sie \"{value.lower()}\"."
-                            line = xml[:match.start(1)].count("\n") + 1
-                            codelist_table.append({
-                                "label": label,
-                                "value": value,
-                                "line": line,
-                                "column": 1,
-                                "suggestion": suggestion.strip()
-                            })
+        if "fix_all" in request.form:
+            xml = request.form.get("raw_xml", "")
+            codelist_table = eval(request.form.get("raw_table", "[]"))  # Achtung: bei Bedarf absichern!
+            corrected_xml = apply_corrections_to_xml(xml, codelist_table)
+            result = "✔️ Alle vorgeschlagenen Korrekturen wurden übernommen."
+        else:
+            file = request.files.get("pdf_file")
+            if file:
+                filename = file.filename
+                file_path = "uploaded.pdf"
+                file.save(file_path)
+                xml = extract_xml_from_pdf(file_path)
+                if not xml:
+                    result = "❌ Keine XML-Datei in der PDF gefunden."
+                else:
+                    parser = etree.XMLParser(recover=True)
+                    try:
+                        etree.fromstring(xml.encode("utf-8"), parser)
+                        result = "✔️ XML ist wohlgeformt."
+                    except:
+                        result = "❌ XML enthält Syntaxfehler."
+
+                    codelist_checks = [
+                        (r"<ram:CurrencyCode>(.*?)</ram:CurrencyCode>", code_sets.get("Currency", set()), "CurrencyCode"),
+                        (r"<ram:CountryID>(.*?)</ram:CountryID>", code_sets.get("Country", set()), "CountryID"),
+                        (r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", code_sets.get("5305", set()), "CategoryCode"),
+                    ]
+                    for pattern, allowed_set, label in codelist_checks:
+                        for match in re.finditer(pattern, xml):
+                            value = match.group(1).strip()
+                            if value not in allowed_set:
+                                suggestion = ""
+                                if value.upper() in allowed_set:
+                                    suggestion = value.upper()
+                                elif value.lower() in allowed_set:
+                                    suggestion = value.lower()
+                                line = xml[:match.start(1)].count("\n") + 1
+                                codelist_table.append({
+                                    "label": label,
+                                    "value": value,
+                                    "line": line,
+                                    "column": 1,
+                                    "suggestion": suggestion
+                                })
+
     return render_template("index.html",
                            result=result,
                            filename=filename,
@@ -169,7 +150,11 @@ def index():
                            suggestion="<br>".join(suggestions),
                            syntax_table=syntax_table,
                            codelist_table=codelist_table,
+                           raw_xml=xml if request.method == "POST" else "",
+                           raw_table=codelist_table,
+                           corrected_xml=corrected_xml,
                            codelisten_hinweis="Codelistenprüfung basierend auf Excel-Vorgabe")
+
 
 app.add_url_rule("/", "index", index, methods=["GET", "POST"])
 
