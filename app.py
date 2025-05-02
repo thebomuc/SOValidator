@@ -100,20 +100,24 @@ def index():
             if folder:
                 selected_schemas.extend(list_all_xsd_files(folder))
 
-        if file and selected_schemas:
+        if file:
             filename = file.filename
             file_path = "uploaded.pdf"
             file.save(file_path)
-            xml = extract_xml_from_pdf(file_path)
-            if not xml:
-                result = "❌ Keine XML-Datei in der PDF gefunden."
+
+            if not selected_schemas:
+                result = "⚠️ Keine XSD-Dateien in den gewählten Schemas gefunden."
             else:
-                result = "✔️ XML ist wohlgeformt."
-                valid, invalid = validate_against_selected_xsds(xml, selected_schemas)
-                if valid:
-                    result += "<br><span style='color:green'>✔️ Gültig für:<ul>" + "".join(f"<li>{x}</li>" for x in valid) + "</ul></span>"
-                if invalid:
-                    result += "<br><span style='color:red'>❌ Ungültig für:<ul>" + "".join(f"<li>{x}: {msg.splitlines()[0]}</li>" for x, msg in invalid) + "</ul></span>"
+                xml = extract_xml_from_pdf(file_path)
+                if not xml:
+                    result = "❌ Keine XML-Datei in der PDF gefunden."
+                else:
+                    result = "✔️ XML ist wohlgeformt."
+                    valid, invalid = validate_against_selected_xsds(xml, selected_schemas)
+                    if valid:
+                        result += "<br><span style='color:green'>✔️ Gültig für:<ul>" + "".join(f"<li>🟢 {x}</li>" for x in valid) + "</ul></span>"
+                    if invalid:
+                        result += "<br><span style='color:red'>❌ Ungültig für:<ul>" + "".join(f"<li>🔴 {x}: {msg.splitlines()[0]}</li>" for x, msg in invalid) + "</ul></span>"
 
         session['selected_schemas'] = selected_schema_keys
 
