@@ -97,8 +97,9 @@
                 <tr>
                     <th style="width:10%;">Zeile</th>
                     <th style="width:10%;">Zeichen</th>
-                    <th style="width:20%;">Feld</th>
-                    <th>Wert</th>
+                    <th style="width:15%;">Feld</th>
+                    <th>Fehlerhafter Wert</th>
+                    <th>Korrekturvorschlag</th>
                 </tr>
             </thead>
             <tbody>
@@ -108,6 +109,13 @@
                     <td>{{ row.column }}</td>
                     <td>{{ row.label }}</td>
                     <td><span class="highlight">{{ row.value }}</span></td>
+                    <td>
+                        {% if row.suggestion %}
+                            <span style="color:orange">{{ row.suggestion }}</span>
+                        {% else %}
+                            (kein Vorschlag vorhanden)
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
