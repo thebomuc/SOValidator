@@ -18,6 +18,7 @@ EXCEL_PATH = "static/data/EN16931 code lists values v14 - used from 2024-11-15.x
 codelists = {
     "Currency": "Alphabetic Code",
     "Country": "Alpha-2 code",
+  
     "5305": "Code",
     "VATEX": "CODE",
     "1153": "Code Values",
@@ -156,11 +157,17 @@ def index():
     syntax_table = []
 
     all_schemas = list_all_xsd_files(DEFAULT_XSD_ROOT)
-    schema_choices = [(x, f"{i+1}. {os.path.basename(x)}") for i, x in enumerate(all_schemas)]
+    default_selected = [
+    s for s in all_schemas
+    if os.path.basename(s) in ["Factur-X_1.07.2_BASIC.xsd", "Factur-X_1.07.2_EN16931.xsd"]
+]
+schema_choices = [(x, f"{i+1}. {os.path.basename(x)}") for i, x in enumerate(all_schemas)]
 
     if request.method == "POST":
         file = request.files["pdf_file"]
         selected_schemas = request.form.getlist("schemas")
+        if not selected_schemas:
+            selected_schemas = default_selected
 
         if file and selected_schemas:
             filename = file.filename
