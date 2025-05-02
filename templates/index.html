@@ -49,7 +49,14 @@
     <form method="POST" enctype="multipart/form-data">
         <div class="box">
             <label>PDF-Datei mit eingebetteter XML hochladen:</label><br><br>
-            <input type="file" name="pdf_file" required>
+            <input type="file" name="pdf_file" id="pdf_file" style="width: 100%;" onchange="updateFileName()">
+<p id="selected-file" style="font-size: 0.9em; color: #555;">
+    {% if filename %}
+        Ausgewählte Datei: <strong>{{ filename }}</strong>
+    {% else %}
+        Keine Datei ausgewählt.
+    {% endif %}
+</p>
             <br><br>
             <label><input type="checkbox" name="schematron"> Schematron-Prüfung aktivieren</label><br>
             <label><input type="checkbox" name="nonstandard"> Nicht-standardisierte Tags anzeigen</label><br><br>
