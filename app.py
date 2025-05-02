@@ -157,7 +157,7 @@ def index():
     syntax_table = []
 
     all_schemas = list_all_xsd_files(DEFAULT_XSD_ROOT)
-    default_selected = [
+default_selected = [
     s for s in all_schemas
     if os.path.basename(s) in ["Factur-X_1.07.2_BASIC.xsd", "Factur-X_1.07.2_EN16931.xsd"]
 ]
