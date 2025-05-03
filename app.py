@@ -230,17 +230,18 @@ def index():
                 if match:
                     value = match.group(1).strip()
                     if value not in allowed_set:
-                    from difflib import get_close_matches
-                    suggestion = ""
-                    if value.upper() in allowed_set:
-                        suggestion = f"Möglicherweise meinten Sie: „{value.upper()}“"
-                    elif value.lower() in allowed_set:
-                        suggestion = f"Möglicherweise meinten Sie: „{value.lower()}“"
-                    else:
-                        candidates = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
-                        if candidates:
-                            suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
-                    codelist_table.append({
+                        from difflib import get_close_matches
+                        suggestion = ""
+                        if value.upper() in allowed_set:
+                            suggestion = f"Möglicherweise meinten Sie: „{value.upper()}“"
+                        elif value.lower() in allowed_set:
+                            suggestion = f"Möglicherweise meinten Sie: „{value.lower()}“"
+                        else:
+                            candidates = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
+                            if candidates:
+                                suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
+
+                        codelist_table.append({
                             "label": label,
                             "value": value,
                             "suggestion": suggestion,
