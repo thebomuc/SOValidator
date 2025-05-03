@@ -174,25 +174,11 @@ def index():
     syntax_table = []
 
     if request.method == "POST":
-        file = request.files.get("pdf_file")
-        if file and file.filename != "":
+        file = request.files["pdf_file"]
+        if file:
             filename = file.filename
             file_path = "uploaded.pdf"
             file.save(file_path)
-        elif os.path.exists("uploaded.pdf"):
-            filename = "uploaded.pdf"
-            file_path = "uploaded.pdf"
-        else:
-            result = "❌ Keine Datei ausgewählt oder hochgeladen."
-            return render_template("index.html",
-                                   result=result,
-                                   filename=filename,
-                                   excerpt=excerpt,
-                                   highlight_line=highlight_line,
-                                   suggestion="<br>".join(suggestions),
-                                   syntax_table=syntax_table,
-                                   codelist_table=codelist_table,
-                                   codelisten_hinweis=codelisten_hinweis)
             xml = extract_xml_from_pdf(file_path)
             if not xml:
                 result = "❌ Keine XML-Datei in der PDF gefunden."
@@ -258,11 +244,16 @@ def index():
 
     codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
 
-    
+    legend = """<div style='margin-top:1em; font-size:0.9em'>
+<strong>Legende:</strong><br>
+<span style='color:red;font-weight:bold'>❌ Fehler</span><br>
+<span style='color:orange;font-weight:bold'>⚠️ Warnung</span><br>
+<span style='color:black'>✔️ Erfolgreich</span>
+</div>"""
 
     return render_template("index.html",
-                           
-                           
+                           result=result + legend,
+                           filename=filename,
                            excerpt=excerpt,
                            highlight_line=highlight_line,
                            suggestion="<br>".join(suggestions),
