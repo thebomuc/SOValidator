@@ -240,7 +240,6 @@ def index():
                         candidates = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
                         if candidates:
                             suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
-
                     codelist_table.append({
                             "label": label,
                             "value": value,
