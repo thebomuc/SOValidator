@@ -65,30 +65,12 @@
 
     {% if result %}
     <div class="box">
-        <h2>🔎 Ergebnis</h2>
+        <h2>🔎 Ergebnis XSD/XML</h2>
         <div>{{ result|safe }}</div>
     </div>
     {% endif %}
 
-    {% if excerpt %}
-    <div class="box">
-        <h3>🔍 XML-Auszug mit markierter Zeile</h3>
-        <pre>
-{% for line in excerpt %}
-{{ line|safe }}
-{% endfor %}
-        </pre>
-    </div>
-    {% endif %}
-
-    {% if suggestion %}
-    <div class="box">
-        <h3>💡 Hinweise</h3>
-        <div>{{ suggestion|safe }}</div>
-    </div>
-    {% endif %}
-
-   {% if codelist_table %}
+       {% if codelist_table %}
 <div class="box">
     <h3>📚 Codelistenverletzungen</h3>
     <p style="font-size: 0.9em;">{{ codelisten_hinweis }}</p>
@@ -139,6 +121,24 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+    {% endif %}
+    
+    {% if excerpt %}
+    <div class="box">
+        <h3>🔍 XML-Auszug mit markierter Zeile</h3>
+        <pre>
+{% for line in excerpt %}
+{{ line|safe }}
+{% endfor %}
+        </pre>
+    </div>
+    {% endif %}
+
+    {% if suggestion %}
+    <div class="box">
+        <h3>💡 Hinweise</h3>
+        <div>{{ suggestion|safe }}</div>
     </div>
     {% endif %}
 </body>
