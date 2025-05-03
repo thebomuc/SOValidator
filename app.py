@@ -242,7 +242,7 @@ def index():
                     for tag in sorted(nonstandard_tags):
                         suggestions.append(f"❌ Nicht in verwendeter XSD enthalten: &lt;ram:{tag}&gt;")
 
-    codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf 'EN16931 code lists values v14 - used from 2024-11-15.xlsx'."
+    codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basierend auf '4. EN16931+FacturX code lists values v14 - used from 2024-11-15.xlsx'."
 
     legend = """<div style='margin-top:1em; font-size:0.9em'>
 <strong>Legende:</strong><br>
