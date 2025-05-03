@@ -57,15 +57,15 @@
         </div>
     </form>
 
-    {% if filename %}
-    <div class="box">
-        <h2>📄 Datei: {{ filename }}</h2>
+<!--{% if filename %}
+       <div class="box">
+       <h4>📄 Datei: {{ filename }}</h4>
     </div>
-    {% endif %}
+    {% endif %}  -->
 
     {% if result %}
     <div class="box">
-        <h2>🔎 Ergebnis XSD/XML</h2>
+        <h3>🔎 Ergebnis XSD/XML</h3>
         <div>{{ result|safe }}</div>
     </div>
     {% endif %}
