@@ -225,29 +225,34 @@ def index():
 
         for pattern, allowed_set, label in codelist_checks:
             regex = re.compile(pattern, re.DOTALL)
-            for lineno, line in enumerate(xml_lines, start=1):
-                match = regex.search(line)
-                if match:
-                    value = match.group(1).strip()
-                    if value not in allowed_set:
-                        from difflib import get_close_matches
-                        suggestion = ""
-                        if value.upper() in allowed_set:
-                            suggestion = f"Möglicherweise meinten Sie: „{value.upper()}“"
-                        elif value.lower() in allowed_set:
-                            suggestion = f"Möglicherweise meinten Sie: „{value.lower()}“"
-                        else:
-                            candidates = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
-                            if candidates:
-                                suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
+            for match in regex.finditer(xml):
+                value = match.group(1).strip()
+                if value not in allowed_set:
+                    from difflib import get_close_matches
+                    suggestion = ""
+                    if value.upper() in allowed_set:
+                        suggestion = f"Möglicherweise meinten Sie: „{value.upper()}“"
+                    elif value.lower() in allowed_set:
+                        suggestion = f"Möglicherweise meinten Sie: „{value.lower()}“"
+                    else:
+                        candidates = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
+                        if candidates:
+                            suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
 
-                        codelist_table.append({
-                            "label": label,
-                            "value": value,
-                            "suggestion": suggestion,
-                            "line": lineno,
-                            "column": line.find(value) + 1
-                        })
+                    start = match.start(1)
+                    line_number = xml.count("
+", 0, start) + 1
+                    xml_lines = xml.splitlines()
+                    line_text = xml_lines[line_number - 1] if line_number - 1 < len(xml_lines) else ""
+                    column_number = line_text.find(value) + 1
+
+                    codelist_table.append({
+                        "label": label,
+                        "value": value,
+                        "suggestion": suggestion,
+                        "line": line_number,
+                        "column": column_number
+                    })
 
     codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15)."
 
