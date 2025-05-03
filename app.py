@@ -180,7 +180,7 @@ def index():
         xml_lines = xml.splitlines()
         codelist_checks = []
 
-        # dynamisch Element-Tags bestimmen
+        # dynamisch Element-Tags bestimmen + manuelle Ergänzungen für abweichende Tags
         for label in codelists:
             tag = ""
             if label.isdigit():
@@ -195,6 +195,21 @@ def index():
             pattern = fr"<ram:{tag}>(.*?)</ram:{tag}>"
             allowed = code_sets.get(label, set())
             codelist_checks.append((pattern, allowed, label))
+
+        # Manuelle Ergänzung spezieller Tags
+        manual_checks = {
+    "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
+    "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
+    "VAT CAT": [r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
+    "Date": [r'DateTimeString[^>]*?format="(.*?)"'],
+    "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
+    "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
+    "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"]
+}
+        for label, patterns in manual_checks.items():
+            for pattern in patterns:
+                allowed = code_sets.get(label, set())
+                codelist_checks.append((pattern, allowed, label + " (manuell)"))
 
         # Attribute prüfen (z. B. unitCode)
         attr_patterns = {
