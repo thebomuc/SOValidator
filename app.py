@@ -225,9 +225,10 @@ def index():
 
         for pattern, allowed_set, label in codelist_checks:
             regex = re.compile(pattern, re.DOTALL)
+            allowed_normalized = {v for v in allowed_set}
             for match in regex.finditer(xml):
                 value = match.group(1).strip()
-                if value not in allowed_set:
+                if value not in allowed_normalized:
                     from difflib import get_close_matches
                     suggestion = ""
                     if value.upper() in allowed_set:
@@ -240,7 +241,8 @@ def index():
                             suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
 
                     start = match.start(1)
-                    line_number = xml.count("\n", 0, start) + 1
+                    line_number = xml.count("
+", 0, start) + 1
                     xml_lines = xml.splitlines()
                     line_text = xml_lines[line_number - 1] if line_number - 1 < len(xml_lines) else ""
                     column_number = line_text.find(value) + 1
