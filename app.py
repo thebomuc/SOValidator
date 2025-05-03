@@ -224,7 +224,7 @@ def index():
                 codelist_checks.append((pattern, allowed, f"{label} (Attr)"))
 
         for pattern, allowed_set, label in codelist_checks:
-            regex = re.compile(pattern)
+            regex = re.compile(pattern, re.DOTALL)
             for lineno, line in enumerate(xml_lines, start=1):
                 match = regex.search(line)
                 if match:
