@@ -193,11 +193,11 @@ def index():
             "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "VAT CAT": [r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "5305": [r"<ram:ApplicableTradeTax>.*?<ram:CategoryCode>(.*?)</ram:CategoryCode>"],
+            "1001": [r"<rsm:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "Date": [r'DateTimeString[^>]*?format="(.*?)"'],
             "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
             "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
             "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"]
-            "1001": [r"<rsm:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
         }
         for label, patterns in manual_checks.items():
             for pattern in patterns:
