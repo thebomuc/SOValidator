@@ -160,26 +160,25 @@ def index():
 
         xml_lines = xml.splitlines()
 
-        all_checks = {
-            "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
-            "Payment": [r"<ram:TypeCode>(.*?)</ram:TypeCode>"],
-            "VAT CAT": [r"<ram:TypeCode>(.*?)</ram:TypeCode>"],
-            "5305": [r"<ram:CategoryCode>(.*?)</ram:CategoryCode>"],
-            "Date": [r'DateTimeString[^>]*?format="(.*?)"'],
-            "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
-            "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
-            "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"],
-            "1001": [r"<ram:TypeCode>(.*?)</ram:TypeCode>"]
+        element_context_mapping = {
+            "Currency": [(r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>", "")],
+            "Payment": [(r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>", "")],
+            "VAT CAT": [(r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>", "")],
+            "5305": [(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", "")],
+            "Date": [(r'DateTimeString[^>]*?format="(.*?)"', "")],
+            "Line Status": [(r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>", "")],
+            "INCOTERMS": [(r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>", "")],
+            "TRANSPORT": [(r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>", "")],
+            "1001": [(r"<ram:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>", "")],
+            "Unit": [
+                (r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"', ""),
+                (r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"', "")
+            ]
         }
 
-        all_checks["Unit"] = [
-            r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"',
-            r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"'
-        ]
-
-        for label, patterns in all_checks.items():
-            allowed = code_sets.get(label.replace(" (manuell)", ""), set())
-            for pattern in patterns:
+        for label, patterns in element_context_mapping.items():
+            allowed = code_sets.get(label, set())
+            for pattern, _ in patterns:
                 regex = re.compile(pattern)
                 for line_number, line in enumerate(xml_lines, start=1):
                     for match in regex.finditer(line):
@@ -197,6 +196,8 @@ def index():
                                 "line": line_number,
                                 "column": column_number
                             })
+
+        codelist_table.sort(key=lambda x: (x["line"], x["column"]))
 
     codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15)."
 
