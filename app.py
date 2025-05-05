@@ -54,6 +54,20 @@ for sheet, column in codelists.items():
     except Exception:
         code_sets[sheet] = set()
 
+# Neue Pflichtfelddefinitionen (konfigurierbar)
+MANDATORY_TAGS = [
+    "ram:ID",
+    "ram:IssueDateTime",
+    "ram:SellerTradeParty",
+    "ram:BuyerTradeParty",
+    "ram:SpecifiedSupplyChainTradeDelivery",
+    "ram:ApplicableHeaderTradeSettlement",
+    "ram:CountryID",
+    "ram:InvoiceCurrencyCode",
+    "ram:LineID",
+    "ram:TypeCode"
+]
+
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
     for i in range(doc.embfile_count()):
@@ -79,19 +93,28 @@ def validate_xml(xml):
         etree.fromstring(xml.encode("utf-8"), parser)
     except etree.XMLSyntaxError:
         pass
+    suggestions = []
     if parser.error_log:
-        suggestions = []
         for err in parser.error_log:
-            suggestions.append(f"Zeile {err.line}, Spalte {err.column}: {err.message}")
+            if "is not expected" in err.message:
+                suggestions.append(f"⚠️ Struktureller Fehler (Reihenfolge/Erwartung): Zeile {err.line}, Spalte {err.column}: {err.message}")
+            else:
+                suggestions.append(f"Zeile {err.line}, Spalte {err.column}: {err.message}")
         return False, "❌ XML enthält Syntaxfehler:", [], None, suggestions
     else:
-        return True, "✔️ XML ist wohlgeformt.", [], None, None
+        for tag in MANDATORY_TAGS:
+            for match in re.finditer(fr"<{tag}>(.*?)</{tag}>", xml):
+                content = match.group(1).strip()
+                if not content:
+                    line = xml.count("\n", 0, match.start(1)) + 1
+                    suggestions.append(f"⚠️ Pflichtfeld {tag} ist leer (Zeile {line})")
+        return True, "✔️ XML ist wohlgeformt.", [], None, suggestions if suggestions else None
 
 def list_all_xsd_files(schema_root):
     xsd_files = []
     for root, _, files in os.walk(schema_root):
         for file in files:
-            if file.endswith(".xsd"):
+            if file.endswith(".xsd") and ("BASIC" in file or "EN16931" in file):
                 xsd_files.append(os.path.join(root, file))
     return xsd_files
 
@@ -104,14 +127,12 @@ def validate_against_all_xsds(xml, schema_root):
             doc = etree.fromstring(xml.encode("utf-8"))
             schema.assertValid(doc)
             return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
-        except etree.DocumentInvalid as e:
-            errors = [f"{log.message} (Zeile {log.line}, Spalte {log.column})"
-                      for log in e.error_log]
-            result_msg = f"❌ Fehler mit XSD ({os.path.basename(xsd_path)}):<br>" + "<br>".join(errors)
-            results.append(result_msg)
         except Exception as e:
-            results.append(f"⚠️ Technischer Fehler mit {os.path.basename(xsd_path)}:<br>{str(e)}")
-    return False, "<br><br>".join(results)
+            if "is not expected" in str(e) or "Expected is" in str(e):
+                results.append(f"⚠️ Strukturfehler in {os.path.basename(xsd_path)}: {str(e)}")
+            else:
+                results.append(str(e))
+    return False, "❌ XML entspricht keiner XSD:<br>" + "<br>".join(results)
 
 def validate_with_schematron(xml, xslt_path):
     try:
