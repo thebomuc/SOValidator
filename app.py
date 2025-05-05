@@ -169,45 +169,40 @@ def index():
             "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
             "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
             "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"],
-            "1001": [r"<ram:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
+            "1001": [r"<rsm:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "Unit": [
                 r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"',
                 r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"'
             ]
         }
 
-        seen = set()
-
         for label, patterns in element_context_mapping.items():
-            allowed = set(val.upper() for val in code_sets.get(label, set()))
+            allowed = set(v.upper() for v in code_sets.get(label, set()))
             for pattern in patterns:
                 regex = re.compile(pattern)
                 for line_number, line in enumerate(xml_lines, start=1):
                     for match in regex.finditer(line):
                         value = match.group(1).strip()
                         start_index = match.start(1)
-                        key = (label, value.upper(), line_number, start_index)
-                        if key in seen:
+                        if value.upper() in allowed:
                             continue
-                        seen.add(key)
-                        if value.upper() not in allowed:
-                            suggestion = ""
-                            if value == "":
-                                suggestion = "⚠️ Kein Wert angegeben"
-                            else:
-                                candidates = get_close_matches(value.upper(), allowed, n=3, cutoff=0.6)
-                                suggestion = (
-                                    "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
-                                    if candidates else "–"
-                                )
-                            column_number = start_index + 1
-                            codelist_table.append({
-                                "label": label,
-                                "value": value,
-                                "suggestion": suggestion,
-                                "line": line_number,
-                                "column": column_number
-                            })
+                        suggestion = ""
+                        if value == "":
+                            suggestion = "⚠️ Kein Wert angegeben"
+                        else:
+                            candidates = get_close_matches(value.upper(), allowed, n=3, cutoff=0.6)
+                            suggestion = (
+                                "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
+                                if candidates else "–"
+                            )
+                        column_number = line.find(value) + 1
+                        codelist_table.append({
+                            "label": label,
+                            "value": value,
+                            "suggestion": suggestion,
+                            "line": line_number,
+                            "column": column_number
+                        })
 
         codelist_table.sort(key=lambda x: (x["line"], x["column"]))
 
