@@ -162,6 +162,7 @@ def index():
 
         element_context_mapping = {
             "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
+            "Country": [r"<ram:CountryID>(.*?)</ram:CountryID>"],
             "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "VAT CAT": [r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "5305": [r"<ram:CategoryCode>(.*?)</ram:CategoryCode>"],
