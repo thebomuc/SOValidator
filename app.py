@@ -176,6 +176,8 @@ def index():
             ]
         }
 
+        seen = set()
+
         for label, patterns in element_context_mapping.items():
             allowed = code_sets.get(label, set())
             for pattern, _ in patterns:
@@ -183,11 +185,19 @@ def index():
                 for line_number, line in enumerate(xml_lines, start=1):
                     for match in regex.finditer(line):
                         value = match.group(1).strip()
+                        if (label, value, line_number) in seen:
+                            continue
+                        seen.add((label, value, line_number))
                         if value not in allowed:
                             suggestion = ""
-                            candidates = get_close_matches(value.upper(), allowed, n=3, cutoff=0.6)
-                            if candidates:
-                                suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
+                            if value == "":
+                                suggestion = "⚠️ Kein Wert angegeben"
+                            else:
+                                candidates = get_close_matches(value.upper(), allowed, n=3, cutoff=0.6)
+                                if candidates:
+                                    suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
+                                else:
+                                    suggestion = "–"
                             column_number = match.start(1) + 1
                             codelist_table.append({
                                 "label": label,
