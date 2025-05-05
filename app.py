@@ -182,19 +182,19 @@ def index():
                 regex = re.compile(pattern)
                 for match in regex.finditer(xml):
                     raw = match.group(1)
-                    value = raw.strip()
+                    value = raw.strip() if raw else ""
                     if value == "" or value not in allowed_set:
                         suggestion = ""
                         if value == "":
                             suggestion = "⚠️ Kein Wert angegeben"
                         elif value.upper() in allowed_set:
-                            suggestion = f"Möglicherweise meinten Sie: \u201e{value.upper()}\u201c"
+                            suggestion = f"Möglicherweise meinten Sie: „{value.upper()}“"
                         elif value.lower() in allowed_set:
-                            suggestion = f"Möglicherweise meinten Sie: \u201e{value.lower()}\u201c"
+                            suggestion = f"Möglicherweise meinten Sie: „{value.lower()}“"
                         else:
                             close_matches = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
                             if close_matches:
-                                suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"\u201e{m}\u201c" for m in close_matches)
+                                suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{m}“" for m in close_matches)
                             else:
                                 suggestion = "–"
                         start = match.start(1)
