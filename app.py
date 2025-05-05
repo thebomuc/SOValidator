@@ -180,33 +180,34 @@ def index():
             allowed_set = code_sets.get(label, set())
             for pattern in patterns:
                 regex = re.compile(pattern)
-                for line_number, line in enumerate(xml_lines, start=1):
-                    for match in regex.finditer(line):
-                        raw = match.group(1)
-                        value = raw.strip()
-                        if value == "" or value not in allowed_set:
-                            suggestion = ""
-                            if value == "":
-                                suggestion = "⚠️ Kein Wert angegeben"
+                for match in regex.finditer(xml):
+                    raw = match.group(1)
+                    value = raw.strip()
+                    if value == "" or value not in allowed_set:
+                        suggestion = ""
+                        if value == "":
+                            suggestion = "⚠️ Kein Wert angegeben"
+                        elif value.upper() in allowed_set:
+                            suggestion = f"Möglicherweise meinten Sie: \u201e{value.upper()}\u201c"
+                        elif value.lower() in allowed_set:
+                            suggestion = f"Möglicherweise meinten Sie: \u201e{value.lower()}\u201c"
+                        else:
+                            close_matches = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
+                            if close_matches:
+                                suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"\u201e{m}\u201c" for m in close_matches)
                             else:
-                                if value.upper() in allowed_set:
-                                    suggestion = f"Möglicherweise meinten Sie: „{value.upper()}“"
-                                elif value.lower() in allowed_set:
-                                    suggestion = f"Möglicherweise meinten Sie: „{value.lower()}“"
-                                else:
-                                    close_matches = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
-                                    if close_matches:
-                                        suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{m}“" for m in close_matches)
-                                    else:
-                                        suggestion = "–"
-                            column_number = line.find(raw) + 1
-                            codelist_table.append({
-                                "label": label,
-                                "value": value,
-                                "suggestion": suggestion,
-                                "line": line_number,
-                                "column": column_number
-                            })
+                                suggestion = "–"
+                        start = match.start(1)
+                        line_number = xml.count("\n", 0, start) + 1
+                        line_text = xml_lines[line_number - 1] if line_number - 1 < len(xml_lines) else ""
+                        column_number = line_text.find(raw) + 1 if raw in line_text else start
+                        codelist_table.append({
+                            "label": label,
+                            "value": value,
+                            "suggestion": suggestion,
+                            "line": line_number,
+                            "column": column_number
+                        })
 
         codelist_table.sort(key=lambda x: (x["line"], x["column"]))
 
