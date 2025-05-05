@@ -104,9 +104,11 @@ def validate_against_all_xsds(xml, schema_root):
             doc = etree.fromstring(xml.encode("utf-8"))
             schema.assertValid(doc)
             return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
+        except etree.DocumentInvalid as e:
+            results.append(f"❌ Fehler mit {os.path.basename(xsd_path)}:<br>{str(e)}")
         except Exception as e:
-            results.append(str(e))
-    return False, "❌ XML entspricht keiner XSD:<br>" + "<br>".join(results)
+            results.append(f"⚠️ Technischer Fehler mit {os.path.basename(xsd_path)}:<br>{str(e)}")
+    return False, "❌ XML entspricht keiner XSD:<br>" + "<br><br>".join(results)
 
 def validate_with_schematron(xml, xslt_path):
     try:
