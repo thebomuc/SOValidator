@@ -183,8 +183,6 @@ def index():
                 for match in regex.finditer(xml):
                     raw = match.group(1)
                     value = raw.strip()
-
-                    # Fehlerbedingung
                     if value == "" or value not in allowed_set:
                         suggestion = ""
                         if value == "":
@@ -199,15 +197,11 @@ def index():
                                 suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"\u201e{m}\u201c" for m in close_matches)
                             else:
                                 suggestion = "–"
-
                         start = match.start(1)
                         line_number = xml.count("\n", 0, start) + 1
                         line_text = xml_lines[line_number - 1] if line_number - 1 < len(xml_lines) else ""
-
-                        # finde ALLE Positionen des Werts in der Zeile
                         offset = start - sum(len(l) + 1 for l in xml_lines[:line_number - 1])
                         column_number = offset + 1
-
                         codelist_table.append({
                             "label": label,
                             "value": value,
