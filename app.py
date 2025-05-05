@@ -110,11 +110,18 @@ def validate_xml(xml):
                     suggestions.append(f"⚠️ Pflichtfeld {tag} ist leer (Zeile {line})")
         return True, "✔️ XML ist wohlgeformt.", [], None, suggestions if suggestions else None
 
+#def list_all_xsd_files(schema_root):
+#    xsd_files = []
+#    for root, _, files in os.walk(schema_root):
+#        for file in files:
+#            if file.endswith(".xsd") and ("BASIC" in file or "EN16931" in file):
+#                xsd_files.append(os.path.join(root, file))
+#    return xsd_files
 def list_all_xsd_files(schema_root):
     xsd_files = []
     for root, _, files in os.walk(schema_root):
         for file in files:
-            if file.endswith(".xsd") and ("BASIC" in file or "EN16931" in file):
+            if file.endswith(".xsd"):
                 xsd_files.append(os.path.join(root, file))
     return xsd_files
 
