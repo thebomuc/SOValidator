@@ -181,7 +181,7 @@ def index():
             for pattern in patterns:
                 regex = re.compile(pattern)
                 for match in regex.finditer(xml):
-                    raw = match.group(1)
+                    raw = match.group(1) if match.lastindex else ""
                     value = raw.strip() if raw else ""
                     if value == "" or value not in allowed_set:
                         suggestion = ""
@@ -197,7 +197,7 @@ def index():
                                 suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{m}“" for m in close_matches)
                             else:
                                 suggestion = "–"
-                        start = match.start(1)
+                        start = match.start(1) if match.lastindex else match.start()
                         line_number = xml.count("\n", 0, start) + 1
                         line_text = xml_lines[line_number - 1] if line_number - 1 < len(xml_lines) else ""
                         offset = start - sum(len(l) + 1 for l in xml_lines[:line_number - 1])
