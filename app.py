@@ -161,18 +161,18 @@ def index():
         xml_lines = xml.splitlines()
 
         element_context_mapping = {
-            "Currency": [(r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>", "")],
-            "Payment": [(r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>", "")],
-            "VAT CAT": [(r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>", "")],
-            "5305": [(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", "")],
-            "Date": [(r'DateTimeString[^>]*?format="(.*?)"', "")],
-            "Line Status": [(r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>", "")],
-            "INCOTERMS": [(r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>", "")],
-            "TRANSPORT": [(r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>", "")],
-            "1001": [(r"<ram:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>", "")],
+            "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
+            "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
+            "VAT CAT": [r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
+            "5305": [r"<ram:CategoryCode>(.*?)</ram:CategoryCode>"],
+            "Date": [r'DateTimeString[^>]*?format="(.*?)"'],
+            "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
+            "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
+            "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"],
+            "1001": [r"<ram:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "Unit": [
-                (r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"', ""),
-                (r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"', "")
+                r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"',
+                r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"'
             ]
         }
 
@@ -180,7 +180,7 @@ def index():
 
         for label, patterns in element_context_mapping.items():
             allowed = code_sets.get(label, set())
-            for pattern, _ in patterns:
+            for pattern in patterns:
                 regex = re.compile(pattern)
                 for line_number, line in enumerate(xml_lines, start=1):
                     for match in regex.finditer(line):
@@ -194,10 +194,10 @@ def index():
                                 suggestion = "⚠️ Kein Wert angegeben"
                             else:
                                 candidates = get_close_matches(value.upper(), allowed, n=3, cutoff=0.6)
-                                if candidates:
-                                    suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
-                                else:
-                                    suggestion = "–"
+                                suggestion = (
+                                    "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
+                                    if candidates else "–"
+                                )
                             column_number = match.start(1) + 1
                             codelist_table.append({
                                 "label": label,
