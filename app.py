@@ -197,6 +197,7 @@ def index():
             "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
             "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
             "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"]
+            "1001": [r"<rsm:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
         }
         for label, patterns in manual_checks.items():
             for pattern in patterns:
