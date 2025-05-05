@@ -192,7 +192,7 @@ def index():
             "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
             "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "VAT CAT": [r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
-            "5305": [r"<ram:ApplicableTradeTax>.*?<ram:CategoryCode>(.*?)</ram:CategoryCode>"],
+            "5305": [r"<ram:CategoryCode>(.*?)</ram:CategoryCode>"],
             "1001": [r"<rsm:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "Date": [r'DateTimeString[^>]*?format="(.*?)"'],
             "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
