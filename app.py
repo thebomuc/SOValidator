@@ -225,10 +225,9 @@ def index():
 
         for pattern, allowed_set, label in codelist_checks:
             regex = re.compile(pattern, re.DOTALL)
-            allowed_normalized = {v.lower() for v in allowed_set}
             for match in regex.finditer(xml):
                 value = match.group(1).strip()
-                if value.lower() not in allowed_normalized:
+                if value not in allowed_set:
                     from difflib import get_close_matches
                     suggestion = ""
                     if value.upper() in allowed_set:
