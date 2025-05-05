@@ -10,12 +10,10 @@ from difflib import get_close_matches
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
 
-# Feste Pfade
 DEFAULT_XSD_ROOT = "ZF232_DE/Schema"
 DEFAULT_XSLT_PATH = "EN16931-CII-validation.xslt"
 EXCEL_PATH = "static/data/4. EN16931+FacturX code lists values v14 - used from 2024-11-15.xlsx"
 
-# Codelisten vorbereiten
 codelists = {
     "Country": "Alpha-2 code",
     "Currency": "Alphabetic Code",
@@ -51,14 +49,8 @@ for sheet, column in codelists.items():
     try:
         df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
         df.columns = df.columns.str.strip()
-        if column in df.columns:
-            values = df[column].dropna().astype(str).str.strip().unique()
-            code_sets[sheet] = set(values)
-        else:
-            df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl", header=None)
-            flat = df.values.flatten()
-            cleaned = set(str(v).strip() for v in flat if pd.notnull(v))
-            code_sets[sheet] = cleaned
+        values = df[column].dropna().astype(str).str.strip().unique()
+        code_sets[sheet] = set(values)
     except Exception:
         code_sets[sheet] = set()
 
@@ -89,11 +81,8 @@ def validate_xml(xml):
         pass
     if parser.error_log:
         suggestions = []
-        xml_lines = xml.splitlines()
         for err in parser.error_log:
-            line = err.line
-            msg = f"Zeile {err.line}, Spalte {err.column}: {err.message}"
-            suggestions.append(msg)
+            suggestions.append(f"Zeile {err.line}, Spalte {err.column}: {err.message}")
         return False, "❌ XML enthält Syntaxfehler:", [], None, suggestions
     else:
         return True, "✔️ XML ist wohlgeformt.", [], None, None
@@ -167,81 +156,47 @@ def index():
 
             if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
                 sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
-                for msg in sch_issues:
-                    suggestions.append(f"❌ {msg}")
+                suggestions.extend(f"❌ {msg}" for msg in sch_issues)
 
         xml_lines = xml.splitlines()
-        codelist_checks = []
 
-        for label in codelists:
-            tag = ""
-            if label.isdigit():
-                continue
-            elif label == "Currency": tag = "CurrencyCode"
-            elif label == "Country": tag = "CountryID"
-            elif label == "Language": tag = "LanguageCode"
-            elif label == "Filename": tag = "Filename"
-            elif label == "VATEX": tag = "TaxExemptionReasonCode"
-            elif label == "5305": tag = "CategoryCode"
-            else: tag = label + "Code"
-            pattern = fr"<ram:{tag}>(.*?)</ram:{tag}>"
-            allowed = code_sets.get(label, set())
-            codelist_checks.append((pattern, allowed, label))
-
-        manual_checks = {
+        all_checks = {
             "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
-            "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
-            "VAT CAT": [r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
+            "Payment": [r"<ram:TypeCode>(.*?)</ram:TypeCode>"],
+            "VAT CAT": [r"<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "5305": [r"<ram:CategoryCode>(.*?)</ram:CategoryCode>"],
-            "1001": [r"<rsm:ExchangedDocument>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "Date": [r'DateTimeString[^>]*?format="(.*?)"'],
             "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
             "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
-            "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"]
+            "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"],
+            "1001": [r"<ram:TypeCode>(.*?)</ram:TypeCode>"]
         }
-        for label, patterns in manual_checks.items():
+
+        all_checks["Unit"] = [
+            r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"',
+            r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"'
+        ]
+
+        for label, patterns in all_checks.items():
+            allowed = code_sets.get(label.replace(" (manuell)", ""), set())
             for pattern in patterns:
-                allowed = code_sets.get(label.replace(" (manuell)", ""), set())
-                codelist_checks.append((pattern, allowed, label + " (manuell)"))
-
-        attr_patterns = {
-            "Unit": [
-                r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"',
-                r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"'
-            ]
-        }
-        for label, patterns in attr_patterns.items():
-            for pattern in patterns:
-                allowed = code_sets.get(label, set())
-                codelist_checks.append((pattern, allowed, f"{label} (Attr)"))
-
-        for pattern, allowed_set, label in codelist_checks:
-            regex = re.compile(pattern, re.DOTALL)
-            for match in regex.finditer(xml):
-                value = match.group(1).strip()
-                if value not in allowed_set:
-                    suggestion = ""
-                    if value.upper() in allowed_set:
-                        suggestion = f"Möglicherweise meinten Sie: \u201e{value.upper()}\u201c"
-                    elif value.lower() in allowed_set:
-                        suggestion = f"Möglicherweise meinten Sie: \u201e{value.lower()}\u201c"
-                    else:
-                        candidates = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
-                        if candidates:
-                            suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"\u201e{c}\u201c" for c in candidates)
-
-                    start = match.start(1)
-                    line_number = xml.count("\n", 0, start) + 1
-                    line_text = xml_lines[line_number - 1] if line_number - 1 < len(xml_lines) else ""
-                    column_number = line_text.find(value) + 1
-
-                    codelist_table.append({
-                        "label": label,
-                        "value": value,
-                        "suggestion": suggestion,
-                        "line": line_number,
-                        "column": column_number
-                    })
+                regex = re.compile(pattern)
+                for line_number, line in enumerate(xml_lines, start=1):
+                    for match in regex.finditer(line):
+                        value = match.group(1).strip()
+                        if value not in allowed:
+                            suggestion = ""
+                            candidates = get_close_matches(value.upper(), allowed, n=3, cutoff=0.6)
+                            if candidates:
+                                suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
+                            column_number = match.start(1) + 1
+                            codelist_table.append({
+                                "label": label,
+                                "value": value,
+                                "suggestion": suggestion,
+                                "line": line_number,
+                                "column": column_number
+                            })
 
     codelisten_hinweis = "ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15)."
 
