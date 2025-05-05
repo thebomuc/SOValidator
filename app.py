@@ -5,6 +5,7 @@ import os
 import re
 import pandas as pd
 from openpyxl import load_workbook
+from difflib import get_close_matches
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
@@ -50,7 +51,6 @@ for sheet, column in codelists.items():
     try:
         df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
         df.columns = df.columns.str.strip()
-
         if column in df.columns:
             values = df[column].dropna().astype(str).str.strip().unique()
             code_sets[sheet] = set(values)
@@ -61,7 +61,6 @@ for sheet, column in codelists.items():
             code_sets[sheet] = cleaned
     except Exception:
         code_sets[sheet] = set()
-
 
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
@@ -82,7 +81,6 @@ def extract_xml_from_pdf(pdf_path):
             return xml_bytes.decode("latin1")
     return None
 
-
 def validate_xml(xml):
     parser = etree.XMLParser(recover=True)
     try:
@@ -100,7 +98,6 @@ def validate_xml(xml):
     else:
         return True, "✔️ XML ist wohlgeformt.", [], None, None
 
-
 def list_all_xsd_files(schema_root):
     xsd_files = []
     for root, _, files in os.walk(schema_root):
@@ -108,7 +105,6 @@ def list_all_xsd_files(schema_root):
             if file.endswith(".xsd"):
                 xsd_files.append(os.path.join(root, file))
     return xsd_files
-
 
 def validate_against_all_xsds(xml, schema_root):
     results = []
@@ -123,7 +119,6 @@ def validate_against_all_xsds(xml, schema_root):
             results.append(str(e))
     return False, "❌ XML entspricht keiner XSD:<br>" + "<br>".join(results)
 
-
 def validate_with_schematron(xml, xslt_path):
     try:
         xml_doc = etree.fromstring(xml.encode("utf-8"))
@@ -134,7 +129,6 @@ def validate_with_schematron(xml, xslt_path):
         return [fa.find("svrl:text", namespaces={"svrl": "http://purl.oclc.org/dsdl/svrl"}).text for fa in failed]
     except Exception as e:
         return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
-
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -176,11 +170,9 @@ def index():
                 for msg in sch_issues:
                     suggestions.append(f"❌ {msg}")
 
-        # automatische Codelistenprüfung
         xml_lines = xml.splitlines()
         codelist_checks = []
 
-        # dynamisch Element-Tags bestimmen + manuelle Ergänzungen für abweichende Tags
         for label in codelists:
             tag = ""
             if label.isdigit():
@@ -196,22 +188,21 @@ def index():
             allowed = code_sets.get(label, set())
             codelist_checks.append((pattern, allowed, label))
 
-        # Manuelle Ergänzung spezieller Tags
         manual_checks = {
-    "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
-    "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
-    "VAT CAT": [r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
-    "Date": [r'DateTimeString[^>]*?format="(.*?)"'],
-    "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
-    "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
-    "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"]
-}
+            "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
+            "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
+            "VAT CAT": [r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
+            "5305": [r"<ram:ApplicableTradeTax>.*?<ram:CategoryCode>(.*?)</ram:CategoryCode>"],
+            "Date": [r'DateTimeString[^>]*?format="(.*?)"'],
+            "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
+            "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
+            "TRANSPORT": [r"<ram:TransportModeCode>(.*?)</ram:TransportModeCode>"]
+        }
         for label, patterns in manual_checks.items():
             for pattern in patterns:
-                allowed = code_sets.get(label, set())
+                allowed = code_sets.get(label.replace(" (manuell)", ""), set())
                 codelist_checks.append((pattern, allowed, label + " (manuell)"))
 
-        # Attribute prüfen (z. B. unitCode)
         attr_patterns = {
             "Unit": [
                 r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"',
@@ -224,26 +215,22 @@ def index():
                 codelist_checks.append((pattern, allowed, f"{label} (Attr)"))
 
         for pattern, allowed_set, label in codelist_checks:
-            print(f"🧪 Codeliste {label}: Beispiel 'S' enthalten?", 'S' in allowed_set)
-            print(f"➡️ Werte ({label}) [erste 10]: {sorted(allowed_set)[:10]}")
             regex = re.compile(pattern, re.DOTALL)
             for match in regex.finditer(xml):
                 value = match.group(1).strip()
                 if value not in allowed_set:
-                    from difflib import get_close_matches
                     suggestion = ""
                     if value.upper() in allowed_set:
-                        suggestion = f"Möglicherweise meinten Sie: „{value.upper()}“"
+                        suggestion = f"Möglicherweise meinten Sie: \u201e{value.upper()}\u201c"
                     elif value.lower() in allowed_set:
-                        suggestion = f"Möglicherweise meinten Sie: „{value.lower()}“"
+                        suggestion = f"Möglicherweise meinten Sie: \u201e{value.lower()}\u201c"
                     else:
                         candidates = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
                         if candidates:
-                            suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{c}“" for c in candidates)
+                            suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"\u201e{c}\u201c" for c in candidates)
 
                     start = match.start(1)
                     line_number = xml.count("\n", 0, start) + 1
-                    xml_lines = xml.splitlines()
                     line_text = xml_lines[line_number - 1] if line_number - 1 < len(xml_lines) else ""
                     column_number = line_text.find(value) + 1
 
@@ -266,7 +253,6 @@ def index():
                            syntax_table=syntax_table,
                            codelist_table=codelist_table,
                            codelisten_hinweis=codelisten_hinweis)
-
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
