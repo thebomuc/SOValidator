@@ -175,16 +175,17 @@ def index():
                 r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"'
             ]
         }
+
         for label, patterns in element_context_mapping.items():
             allowed_set = code_sets.get(label, set())
             for pattern in patterns:
                 regex = re.compile(pattern)
                 for line_number, line in enumerate(xml_lines, start=1):
                     for match in regex.finditer(line):
-                        value = match.group(1).strip()
+                        raw = match.group(1)
+                        value = raw.strip()
                         if value == "" or value not in allowed_set:
                             suggestion = ""
-                            # Korrekturvorschläge
                             if value == "":
                                 suggestion = "⚠️ Kein Wert angegeben"
                             else:
@@ -198,8 +199,7 @@ def index():
                                         suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{m}“" for m in close_matches)
                                     else:
                                         suggestion = "–"
-                            # Zeichenposition berechnen
-                            column_number = line.find(match.group(1)) + 1
+                            column_number = line.find(raw) + 1
                             codelist_table.append({
                                 "label": label,
                                 "value": value,
