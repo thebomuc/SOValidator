@@ -224,8 +224,7 @@ def index():
                 codelist_checks.append((pattern, allowed, f"{label} (Attr)"))
 
         for pattern, allowed_set, label in codelist_checks:
-    print(f"
-🧪 Codeliste {label}: Beispiel 'S' enthalten?", 'S' in allowed_set)
+    print(f"🧪 Codeliste {label}: Beispiel 'S' enthalten?", 'S' in allowed_set)
     print(f"➡️ Werte ({label}) [erste 10]: {sorted(allowed_set)[:10]}")
             regex = re.compile(pattern, re.DOTALL)
             for match in regex.finditer(xml):
