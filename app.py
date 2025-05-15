@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request
 import fitz  # PyMuPDF
+import uuid
+import tempfile
 from lxml import etree
 import os
 import re
@@ -169,42 +171,42 @@ def index():
 
     filename = uploaded.filename
     file_ext = os.path.splitext(filename)[1].lower()
-    file_path = "uploaded" + file_ext
-    uploaded.save(file_path)
-
-    # MIME-Typ prüfen
     is_pdf = file_ext == ".pdf"
     is_xml = file_ext == ".xml" or uploaded.content_type in ["application/xml", "text/xml"]
 
-    if is_pdf:
-        xml = extract_xml_from_pdf(file_path)
-        if not xml:
-            result = "❌ Keine XML-Datei in der PDF gefunden."
-            return render_template("index.html", result=result, filename=filename)
-    elif is_xml:
-        try:
+    # Temporäre, eindeutige Datei erzeugen
+    tmp_suffix = file_ext if is_pdf or is_xml else ".bin"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=tmp_suffix) as tmp:
+        file_path = tmp.name
+        uploaded.save(file_path)
+
+    try:
+        # XML aus PDF extrahieren oder direkt einlesen
+        if is_pdf:
+            xml = extract_xml_from_pdf(file_path)
+            if not xml:
+                result = "❌ Keine XML-Datei in der PDF gefunden."
+                return render_template("index.html", result=result, filename=filename)
+        elif is_xml:
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 xml = f.read()
-        except Exception as e:
-            result = f"❌ Fehler beim Lesen der XML-Datei: {e}"
+        else:
+            result = "❌ Ungültiger Dateityp. Bitte nur PDF oder XML hochladen."
             return render_template("index.html", result=result, filename=filename)
-    else:
-        result = "❌ Ungültiger Dateityp. Bitte nur PDF oder XML hochladen."
-        return render_template("index.html", result=result, filename=filename)
 
-    # Ab hier: XML ist erfolgreich geladen
-    valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
-    result = msg
-    if xml_suggestions:
-        syntax_table = xml_suggestions
+        # → ab hier weiter mit xml-Validierung:
+        valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
+        result = msg
+        if xml_suggestions:
+            syntax_table = xml_suggestions
 
-    if valid:
-        xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
-        result += "<br>" + xsd_msg
+        if valid:
+            xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
+            result += "<br>" + xsd_msg
 
-        if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
-            sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
-            suggestions.extend(f"❌ {msg}" for msg in sch_issues)
+            if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
+                sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
+                suggestions.extend(f"❌ {msg}" for msg in sch_issues)
 
     xml_lines = xml.splitlines()
     element_context_mapping = {
@@ -267,6 +269,10 @@ def index():
                            syntax_table=syntax_table,
                            codelist_table=codelist_table,
                            codelisten_hinweis="ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15).")
+    finally:
+        # Temp-Datei nach Verarbeitung löschen
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 if __name__ == "__main__":
     if hasattr(sys, '_MEIPASS'):
