@@ -169,25 +169,29 @@ def index():
 
     filename = uploaded.filename
     file_ext = os.path.splitext(filename)[1].lower()
-    file_path = "uploaded." + file_ext.strip(".")
+file_ext = os.path.splitext(filename)[1].lower()
+file_path = "uploaded" + file_ext
+uploaded.save(file_path)
 
-    uploaded.save(file_path)
+# MIME-Typ zur Sicherheit bestimmen
+is_pdf = file_ext == ".pdf"
+is_xml = file_ext == ".xml" or uploaded.content_type in ["application/xml", "text/xml"]
 
-    if file_ext == ".pdf":
-        xml = extract_xml_from_pdf(file_path)
-        if not xml:
-            result = "❌ Keine XML-Datei in der PDF gefunden."
-            return render_template("index.html", result=result, filename=filename)
-    elif file_ext == ".xml":
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                xml = f.read()
-        except Exception as e:
-            result = f"❌ Fehler beim Lesen der XML-Datei: {e}"
-            return render_template("index.html", result=result, filename=filename)
-    else:
-        result = "❌ Ungültiger Dateityp. Bitte eine PDF- oder XML-Datei hochladen."
+if is_pdf:
+    xml = extract_xml_from_pdf(file_path)
+    if not xml:
+        result = "❌ Keine XML-Datei in der PDF gefunden."
         return render_template("index.html", result=result, filename=filename)
+elif is_xml:
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            xml = f.read()
+    except Exception as e:
+        result = f"❌ Fehler beim Lesen der XML-Datei: {e}"
+        return render_template("index.html", result=result, filename=filename)
+else:
+    result = "❌ Ungültiger Dateityp. Bitte nur PDF oder XML hochladen."
+    return render_template("index.html", result=result, filename=filename)
 
     xml = extract_xml_from_pdf(file_path)
     if not xml:
