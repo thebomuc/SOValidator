@@ -46,16 +46,16 @@
 <body>
     <h1>SOValidator – PDF/XML Validierung</h1>
 
-    <form method="POST" enctype="multipart/form-data">
-        <div class="box">
-            <label>PDF-Datei mit eingebetteter XML hochladen:</label><br><br>
-            <input type="file" name="pdf_file" required>
-            <br><br>
-            <label><input type="checkbox" name="schematron"> Schematron-Prüfung aktivieren</label><br>
-            <label><input type="checkbox" name="nonstandard"> Nicht-standardisierte Tags anzeigen</label><br><br>
-            <button type="submit">Prüfen</button>
-        </div>
-    </form>
+<form method="POST" enctype="multipart/form-data">
+    <div class="box">
+        <label>PDF- oder XML-Datei hochladen:</label><br><br>
+        <input type="file" name="pdf_file" accept=".pdf,.xml" required>
+        <br><br>
+        <label><input type="checkbox" name="schematron"> Schematron-Prüfung aktivieren</label><br>
+        <label><input type="checkbox" name="nonstandard"> Nicht-standardisierte Tags anzeigen</label><br><br>
+        <button type="submit">Prüfen</button>
+    </div>
+</form>
 
 <!--{% if filename %}
        <div class="box">
