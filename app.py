@@ -169,49 +169,45 @@ def index():
 
     filename = uploaded.filename
     file_ext = os.path.splitext(filename)[1].lower()
-file_ext = os.path.splitext(filename)[1].lower()
-file_path = "uploaded" + file_ext
-uploaded.save(file_path)
+    file_path = "uploaded" + file_ext
+    uploaded.save(file_path)
 
-# MIME-Typ zur Sicherheit bestimmen
-is_pdf = file_ext == ".pdf"
-is_xml = file_ext == ".xml" or uploaded.content_type in ["application/xml", "text/xml"]
+    # MIME-Typ prüfen
+    is_pdf = file_ext == ".pdf"
+    is_xml = file_ext == ".xml" or uploaded.content_type in ["application/xml", "text/xml"]
 
-if is_pdf:
-    xml = extract_xml_from_pdf(file_path)
-    if not xml:
-        result = "❌ Keine XML-Datei in der PDF gefunden."
-        return render_template("index.html", result=result, filename=filename)
-elif is_xml:
-    try:
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-            xml = f.read()
-    except Exception as e:
-        result = f"❌ Fehler beim Lesen der XML-Datei: {e}"
-        return render_template("index.html", result=result, filename=filename)
-else:
-    result = "❌ Ungültiger Dateityp. Bitte nur PDF oder XML hochladen."
-    return render_template("index.html", result=result, filename=filename)
-
-    xml = extract_xml_from_pdf(file_path)
-    if not xml:
-        result = "❌ Keine XML-Datei in der PDF gefunden."
+    if is_pdf:
+        xml = extract_xml_from_pdf(file_path)
+        if not xml:
+            result = "❌ Keine XML-Datei in der PDF gefunden."
+            return render_template("index.html", result=result, filename=filename)
+    elif is_xml:
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                xml = f.read()
+        except Exception as e:
+            result = f"❌ Fehler beim Lesen der XML-Datei: {e}"
+            return render_template("index.html", result=result, filename=filename)
     else:
-        valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
-        result = msg
-        if xml_suggestions:
-            syntax_table = xml_suggestions
+        result = "❌ Ungültiger Dateityp. Bitte nur PDF oder XML hochladen."
+        return render_template("index.html", result=result, filename=filename)
 
-        if valid:
-            xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
-            result += "<br>" + xsd_msg
+    # Ab hier: XML ist erfolgreich geladen
+    valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
+    result = msg
+    if xml_suggestions:
+        syntax_table = xml_suggestions
 
-            if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
-                sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
-                suggestions.extend(f"❌ {msg}" for msg in sch_issues)
+    if valid:
+        xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
+        result += "<br>" + xsd_msg
 
-        xml_lines = xml.splitlines()
-        element_context_mapping = {
+        if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
+            sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
+            suggestions.extend(f"❌ {msg}" for msg in sch_issues)
+
+    xml_lines = xml.splitlines()
+    element_context_mapping = {
             "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
             "Country": [r"<ram:CountryID>(.*?)</ram:CountryID>"],
             "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
@@ -226,9 +222,9 @@ else:
                 r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"',
                 r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"'
             ]
-        }
+    }
 
-        for label, patterns in element_context_mapping.items():
+    for label, patterns in element_context_mapping.items():
             allowed_set = code_sets.get(label, set())
             for pattern in patterns:
                 regex = re.compile(pattern)
@@ -260,7 +256,7 @@ else:
                             "column": column_number
                         })
 
-        codelist_table.sort(key=lambda x: (x["line"], x["column"]))
+    codelist_table.sort(key=lambda x: (x["line"], x["column"]))
 
     return render_template("index.html",
                            result=result,
