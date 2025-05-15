@@ -162,21 +162,32 @@ def index():
     codelist_table = []
     syntax_table = []
 
-    file = request.files.get("pdf_file")
-    if file and file.filename:
-        filename = file.filename
-        file_path = "uploaded.pdf"
-        try:
-            file.save(file_path)
-        except PermissionError:
-            result = "❌ Schreibfehler: Kann Datei nicht speichern (PermissionError)"
-            return render_template("index.html", result=result)
-    elif os.path.exists("uploaded.pdf"):
-        filename = "uploaded.pdf"
-        file_path = "uploaded.pdf"
-    else:
+    uploaded = request.files.get("pdf_file")
+    if not uploaded or uploaded.filename == "":
         result = "❌ Keine Datei ausgewählt oder hochgeladen."
-        return render_template("index.html", result=result)
+        return render_template("index.html", result=result, filename=filename)
+
+    filename = uploaded.filename
+    file_ext = os.path.splitext(filename)[1].lower()
+    file_path = "uploaded." + file_ext.strip(".")
+
+    uploaded.save(file_path)
+
+    if file_ext == ".pdf":
+        xml = extract_xml_from_pdf(file_path)
+        if not xml:
+            result = "❌ Keine XML-Datei in der PDF gefunden."
+            return render_template("index.html", result=result, filename=filename)
+    elif file_ext == ".xml":
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                xml = f.read()
+        except Exception as e:
+            result = f"❌ Fehler beim Lesen der XML-Datei: {e}"
+            return render_template("index.html", result=result, filename=filename)
+    else:
+        result = "❌ Ungültiger Dateityp. Bitte eine PDF- oder XML-Datei hochladen."
+        return render_template("index.html", result=result, filename=filename)
 
     xml = extract_xml_from_pdf(file_path)
     if not xml:
