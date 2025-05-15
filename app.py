@@ -207,9 +207,9 @@ def index():
             if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
                 sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
                 suggestions.extend(f"❌ {msg}" for msg in sch_issues)
-
-    xml_lines = xml.splitlines()
-    element_context_mapping = {
+    
+        xml_lines = xml.splitlines()
+        element_context_mapping = {
             "Currency": [r"<ram:InvoiceCurrencyCode>(.*?)</ram:InvoiceCurrencyCode>"],
             "Country": [r"<ram:CountryID>(.*?)</ram:CountryID>"],
             "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
@@ -224,9 +224,9 @@ def index():
                 r'<ram:BilledQuantity[^>]*?unitCode="(.*?)"',
                 r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"'
             ]
-    }
+        }
 
-    for label, patterns in element_context_mapping.items():
+        for label, patterns in element_context_mapping.items():
             allowed_set = code_sets.get(label, set())
             for pattern in patterns:
                 regex = re.compile(pattern)
@@ -258,7 +258,7 @@ def index():
                             "column": column_number
                         })
 
-    codelist_table.sort(key=lambda x: (x["line"], x["column"]))
+        codelist_table.sort(key=lambda x: (x["line"], x["column"]))
 
     finally:
     # Hochgeladene Datei entfernen – wichtig für parallele Nutzung!
