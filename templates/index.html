@@ -142,7 +142,7 @@
     </div>
     {% endif %}
     <form method="POST" action="/download_corrected">
-    <input type="hidden" name="xml_data" value="{{ original_xml|tojson|safe }}">
+    <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
     {% for row in codelist_table %}
         {% if row.suggestion %}
             <label>
