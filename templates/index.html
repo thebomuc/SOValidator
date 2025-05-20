@@ -141,5 +141,17 @@
         <div>{{ suggestion|safe }}</div>
     </div>
     {% endif %}
+    <form method="POST" action="/download_corrected">
+    <input type="hidden" name="xml_data" value="{{ original_xml|tojson|safe }}">
+    {% for row in codelist_table %}
+        {% if row.suggestion %}
+            <label>
+                <input type="checkbox" name="correction" value="{{ row.label }}|{{ row.value }}|{{ row.suggestion|replace('Möglicherweise meinten Sie: „','')|replace('“','') }}">
+                {{ row.label }}: {{ row.value }} → {{ row.suggestion }}
+            </label><br>
+        {% endif %}
+    {% endfor %}
+    <button type="submit">📥 Korrigierte PDF herunterladen</button>
+</form>
 </body>
 </html>
