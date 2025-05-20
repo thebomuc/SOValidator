@@ -296,7 +296,7 @@ def index():
                            suggestion="<br>".join(suggestions),
                            syntax_table=syntax_table,
                            codelist_table=codelist_table,
-                           codelisten_hinweis="ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15).")
+                           codelisten_hinweis="ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15)."),
                            original_xml=xml  # <-- nur wenn xml definiert
 
 if __name__ == "__main__":
