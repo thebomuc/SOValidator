@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
 import fitz  # PyMuPDF
 import uuid
 import tempfile
@@ -9,6 +9,7 @@ import pandas as pd
 from openpyxl import load_workbook
 from difflib import get_close_matches
 import sys
+import io
 
 # Dynamischer Pfad für PyInstaller (sys._MEIPASS) für statische Ressourcen und Templates
 if hasattr(sys, '_MEIPASS'):
@@ -153,6 +154,28 @@ def validate_with_schematron(xml, xslt_path):
         return [fa.find("svrl:text", namespaces={"svrl": "http://purl.oclc.org/dsdl/svrl"}).text for fa in failed]
     except Exception as e:
         return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
+
+@app.route("/download_corrected", methods=["POST"])
+def download_corrected():
+    # Originale XML + Korrekturen aus Form abrufen
+    xml_raw = request.form.get("xml_data")
+    corrections = request.form.getlist("correction")  # z. B. ["5305|s|S", ...]
+
+    # XML anwenden
+    corrected_xml = xml_raw
+    for correction in corrections:
+        tag, old, new = correction.split("|")
+        corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
+
+    # XML in PDF einbetten (vereinfacht)
+    original_pdf_path = "uploaded.pdf"
+    corrected_pdf_path = "corrected.pdf"
+    doc = fitz.open(original_pdf_path)
+    doc.embfile_del(0)
+    doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
+    doc.save(corrected_pdf_path)
+
+    return send_file(corrected_pdf_path, as_attachment=True)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
