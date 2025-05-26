@@ -130,19 +130,25 @@ def list_all_xsd_files(schema_root):
 
 def validate_against_all_xsds(xml, schema_root):
     results = []
+    success = False
     for xsd_path in list_all_xsd_files(schema_root):
         try:
             schema_doc = etree.parse(xsd_path)
             schema = etree.XMLSchema(schema_doc)
             doc = etree.fromstring(xml.encode("utf-8"))
             schema.assertValid(doc)
-            return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
+            results.append(f"✔️ XML entspricht dem XSD: {os.path.basename(xsd_path)}")
+            success = True
         except Exception as e:
             if "is not expected" in str(e) or "Expected is" in str(e):
                 results.append(f"⚠️ Strukturfehler in {os.path.basename(xsd_path)}: {str(e)}")
             else:
-                results.append(str(e))
-    return False, "❌ XML entspricht keiner XSD:<br>" + "<br>".join(results)
+                results.append(f"❌ Fehler in {os.path.basename(xsd_path)}: {str(e)}")
+    
+    if success:
+        return True, "<br>".join(results)
+    else:
+        return False, "❌ XML entspricht keiner XSD:<br>" + "<br>".join(results)
 
 def validate_with_schematron(xml, xslt_path):
     try:
