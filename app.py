@@ -244,6 +244,7 @@ def index():
             "Payment": [r"<ram:SpecifiedTradeSettlementPaymentMeans>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "VAT CAT": [r"<ram:ApplicableTradeTax>.*?<ram:TypeCode>(.*?)</ram:TypeCode>"],
             "5305": [r"<ram:CategoryCode>(.*?)</ram:CategoryCode>"],
+            "1153": [r"<ram:ReferenceTypeCode>(.*?)</ram:ReferenceTypeCode>"],
             "Date": [r'DateTimeString[^>]*?format="(.*?)"'],
             "Line Status": [r"<ram:LineStatusCode>(.*?)</ram:LineStatusCode>"],
             "INCOTERMS": [r"<ram:INCOTERMSCode>(.*?)</ram:INCOTERMSCode>"],
