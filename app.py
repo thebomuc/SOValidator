@@ -128,21 +128,34 @@ def list_all_xsd_files(schema_root):
                 xsd_files.append(os.path.join(root, file))
     return xsd_files
 
-def validate_against_all_xsds(xml, schema_root):
-    results = []
-    for xsd_path in list_all_xsd_files(schema_root):
-        try:
-            schema_doc = etree.parse(xsd_path)
-            schema = etree.XMLSchema(schema_doc)
-            doc = etree.fromstring(xml.encode("utf-8"))
-            schema.assertValid(doc)
-            return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})."
-        except Exception as e:
-            if "is not expected" in str(e) or "Expected is" in str(e):
-                results.append(f"⚠️ Strukturfehler in {os.path.basename(xsd_path)}: {str(e)}")
-            else:
-                results.append(str(e))
-    return False, "❌ XML entspricht keiner XSD:<br>" + "<br>".join(results)
+def extract_schema_location(xml):
+    # Suche nach xsi:schemaLocation im XML-Kopf
+    match = re.search(r'xsi:schemaLocation\s*=\s*"([^"]+)"', xml)
+    if match:
+        parts = match.group(1).split()
+        if len(parts) >= 2:
+            return parts[-1]  # Der zweite Teil ist der tatsächliche XSD-Pfad oder Dateiname
+    return None
+
+def validate_against_exact_xsd(xml, schema_root):
+    xsd_hint = extract_schema_location(xml)
+    if not xsd_hint:
+        return False, "❌ Kein schemaLocation-Hinweis im XML gefunden."
+
+    # Suche Datei im schema_root, die mit dem Hinweis übereinstimmt
+    for root, _, files in os.walk(schema_root):
+        for file in files:
+            if file.endswith(".xsd") and xsd_hint in file:
+                full_path = os.path.join(root, file)
+                try:
+                    schema_doc = etree.parse(full_path)
+                    schema = etree.XMLSchema(schema_doc)
+                    doc = etree.fromstring(xml.encode("utf-8"))
+                    schema.assertValid(doc)
+                    return True, f"✔️ XML validiert erfolgreich gegen {file}.", full_path
+                except Exception as e:
+                    return False, f"❌ Fehler bei der XSD-Validierung mit {file}: {str(e)}", full_path
+    return False, f"❌ Kein passendes XSD gefunden für Hinweis: {xsd_hint}", None
 
 def validate_with_schematron(xml, xslt_path):
     try:
@@ -224,8 +237,13 @@ def index():
             syntax_table = xml_suggestions
 
         if valid:
-            xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
+            xsd_ok, xsd_msg, used_schema_path = validate_against_exact_xsd(xml, DEFAULT_XSD_ROOT)
             result += "<br>" + xsd_msg
+
+        if valid:
+            #OLD
+            #xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
+            #result += "<br>" + xsd_msg
 
             if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
                 sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
@@ -298,7 +316,8 @@ def index():
                            syntax_table=syntax_table,
                            codelist_table=codelist_table,
                            codelisten_hinweis="ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15).",
-                           original_xml=xml)  # <-- korrekt eingerückt und am Ende mit Komma davor
+                           original_xml=xml,  # <-- korrekt eingerückt und am Ende mit Komma davor
+                           used_schema=os.path.basename(used_schema_path) if used_schema_path else None)
 
 if __name__ == "__main__":
     if hasattr(sys, '_MEIPASS'):
