@@ -71,6 +71,7 @@
     {% endif %}
 
        {% if codelist_table %}
+    {% if used_schema %}<p><strong>Verwendetes Schema:</strong> {{ used_schema }}</p>{% endif %}
 <div class="box">
     <h3>📚 Codelistenverletzungen</h3>
     <p style="font-size: 0.9em;">{{ codelisten_hinweis }}</p>
