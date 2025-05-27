@@ -138,24 +138,31 @@ def extract_schema_location(xml):
     return None
 
 def validate_against_exact_xsd(xml, schema_root):
-    xsd_hint = extract_schema_location(xml)
-    if not xsd_hint:
-        return False, "❌ Kein schemaLocation-Hinweis im XML gefunden."
+    try:
+        doc = etree.fromstring(xml.encode("utf-8"))
+        schema_location = doc.attrib.get("{http://www.w3.org/2001/XMLSchema-instance}schemaLocation", "")
+        schema_parts = schema_location.strip().split()
 
-    # Suche Datei im schema_root, die mit dem Hinweis übereinstimmt
-    for root, _, files in os.walk(schema_root):
-        for file in files:
-            if file.endswith(".xsd") and xsd_hint in file:
-                full_path = os.path.join(root, file)
+        if len(schema_parts) < 2:
+            return False, "❌ Kein gültiges 'schemaLocation'-Attribut gefunden.", None
+
+        hinted_url = schema_parts[1]
+        all_xsds = list_all_xsd_files(schema_root)
+
+        for xsd_path in all_xsds:
+            if hinted_url in xsd_path or os.path.basename(hinted_url) == os.path.basename(xsd_path):
                 try:
-                    schema_doc = etree.parse(full_path)
+                    schema_doc = etree.parse(xsd_path)
                     schema = etree.XMLSchema(schema_doc)
-                    doc = etree.fromstring(xml.encode("utf-8"))
                     schema.assertValid(doc)
-                    return True, f"✔️ XML validiert erfolgreich gegen {file}.", full_path
+                    return True, f"✔️ XML entspricht dem XSD ({os.path.basename(xsd_path)})", xsd_path
                 except Exception as e:
-                    return False, f"❌ Fehler bei der XSD-Validierung mit {file}: {str(e)}", full_path
-    return False, f"❌ Kein passendes XSD gefunden für Hinweis: {xsd_hint}", None
+                    return False, f"❌ Strukturfehler gemäß {os.path.basename(xsd_path)}: {str(e)}", xsd_path
+
+        return False, f"❌ Keine passende XSD gefunden für Hint: {hinted_url}", None
+
+    except Exception as e:
+        return False, f"❌ Fehler bei der XSD-Prüfung: {str(e)}", None
 
 def validate_with_schematron(xml, xslt_path):
     try:
