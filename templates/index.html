@@ -135,23 +135,33 @@
     </div>
     {% endif %}
 
-    {% if suggestion %}
-    <div class="box">
-        <h3>💡 Hinweise</h3>
-        <div>{{ suggestion|safe }}</div>
-    </div>
-    {% endif %}
+{% if codelist_table %}
+<div class="box">
+    <h3>🎛️ Codelisten-Korrekturvorschläge</h3>
     <form method="POST" action="/download_corrected">
-    <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
-    {% for row in codelist_table %}
-        {% if row.suggestion %}
-            <label>
-                <input type="checkbox" name="correction" value="{{ row.label }}|{{ row.value }}|{{ row.suggestion|replace('Möglicherweise meinten Sie: „','')|replace('“','') }}">
-                {{ row.label }}: {{ row.value }} → {{ row.suggestion }}
-            </label><br>
-        {% endif %}
-    {% endfor %}
-    <button type="submit">📥 Korrigierte PDF herunterladen</button>
-</form>
+        <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
+        <table>
+            <thead>
+                <tr>
+                    <th>Feld</th>
+                    <th>Gefundener Wert</th>
+                    <th>Vorschlag (Dropdown)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in codelist_table %}
+                    <tr>
+                        <td>{{ row.label }}</td>
+                        <td>{{ row.value }}</td>
+                        <td>{{ row.suggestion|safe }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit">📥 Korrigierte PDF herunterladen</button>
+    </form>
+</div>
+{% endif %}
+
 </body>
 </html>
