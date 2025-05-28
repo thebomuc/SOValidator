@@ -157,10 +157,14 @@ def validate_with_schematron(xml, xslt_path):
 
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
+    original_pdf_path = session.get("original_pdf_path")
+    if not original_pdf_path or not os.path.exists(original_pdf_path):
+    return "❌ Originale PDF nicht gefunden.", 400
+    
     # Originale XML + Korrekturen aus Form abrufen
     xml_raw = request.form.get("xml_data")
     corrections = request.form.getlist("correction")  # z. B. ["5305|s|S", ...]
-
+    
     # XML anwenden
     corrected_xml = xml_raw
     for correction in corrections:
@@ -202,6 +206,8 @@ def index():
     with tempfile.NamedTemporaryFile(delete=False, suffix=tmp_suffix) as tmp:
         file_path = tmp.name
         uploaded.save(file_path)
+
+    session["original_pdf_path"] = file_path
 
     try:
         # XML aus PDF extrahieren oder direkt einlesen
@@ -258,21 +264,24 @@ def index():
                     raw = match.group(1) if match.lastindex else ""
                     value = raw.strip() if raw else ""
                     if value == "" or value not in allowed_set:
-                        if value == "":
-                            suggestion = "⚠️ Kein Wert angegeben"
-                        elif value.upper() in allowed_set:
-                            suggestion = f"Möglicherweise meinten Sie: „{value.upper()}“"
-                        elif value.lower() in allowed_set:
-                            suggestion = f"Möglicherweise meinten Sie: „{value.lower()}“"
-                        else:
-                            close_matches = get_close_matches(value, allowed_set, n=3, cutoff=0.6)
-                            suggestion = "Möglicherweise meinten Sie: " + ", ".join(f"„{m}“" for m in close_matches) if close_matches else "–"
-
+                        if value == "" or value not in allowed_set:
                         start = match.start(1) if match.lastindex else match.start()
                         line_number = xml.count("\n", 0, start) + 1
-                        line_text = xml_lines[line_number - 1] if line_number - 1 < len(xml_lines) else ""
                         offset = start - sum(len(l) + 1 for l in xml_lines[:line_number - 1])
                         column_number = offset + 1
+
+                        if not allowed_set:
+                            dropdown_html = "⚠️ Kein Wert angegeben oder keine Codeliste verfügbar"
+                        else:
+                            sorted_options = sorted(allowed_set)
+                            dropdown_html = f'<label>→ Möglicherweise meinten Sie: '
+                            dropdown_html += f'<select name="correction">'
+                            for option in sorted_options:
+                                selected = 'selected' if option == value else ''
+                                dropdown_html += f'<option value="{label}|{value}|{option}" {selected}>{option}</option>'
+                            dropdown_html += '</select></label>'
+
+                        suggestion = dropdown_html
 
                         codelist_table.append({
                             "label": label,
