@@ -277,9 +277,12 @@ def index():
                         else:
                             sorted_options = sorted(allowed_set)
                             old_value = value if value else "__LEER__"
-                            dropdown_html = f'→ Möglicherweise meinten Sie: <select name="correction">'
+                            closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
+
+                            dropdown_html = f'<label>→ Möglicherweise meinten Sie: '
+                            dropdown_html += f'<select name="correction">'
                             for option in sorted_options:
-                                selected = 'selected' if option == value else ''
+                                selected = 'selected' if closest_match and option == closest_match[0] else ''
                                 dropdown_html += f'<option value="{label}|{old_value}|{option}" {selected}>{option}</option>'
                             dropdown_html += '</select></label>'
 
