@@ -275,11 +275,12 @@ def index():
                             dropdown_html = "⚠️ Kein Wert angegeben oder keine Codeliste verfügbar"
                         else:
                             sorted_options = sorted(allowed_set)
+                            old_value = value if value else "__LEER__"
                             dropdown_html = f'<label>→ Möglicherweise meinten Sie: '
                             dropdown_html += f'<select name="correction">'
                             for option in sorted_options:
                                 selected = 'selected' if option == value else ''
-                                dropdown_html += f'<option value="{label}|{value}|{option}" {selected}>{option}</option>'
+                                dropdown_html += f'<option value="{label}|{old_value}|{option}" {selected}>{option}</option>'
                             dropdown_html += '</select></label>'
 
                         suggestion = dropdown_html
