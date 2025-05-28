@@ -148,15 +148,6 @@
                     <th>Vorschlag (Dropdown)</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for row in codelist_table %}
-                    <tr>
-                        <td>{{ row.label }}</td>
-                        <td>{{ row.value }}</td>
-                        <td>{{ row.suggestion | safe }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
         </table>
         <button type="submit">📥 Korrigierte PDF herunterladen</button>
     </form>
