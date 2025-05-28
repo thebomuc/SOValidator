@@ -264,7 +264,7 @@ def index():
                     raw = match.group(1) if match.lastindex else ""
                     value = raw.strip() if raw else ""
                     if value == "" or value not in allowed_set:
-                        if value == "" or value not in allowed_set:
+                      if value == "" or value not in allowed_set:
                         start = match.start(1) if match.lastindex else match.start()
                         line_number = xml.count("\n", 0, start) + 1
                         offset = start - sum(len(l) + 1 for l in xml_lines[:line_number - 1])
