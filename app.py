@@ -275,6 +275,8 @@ def index():
                         if not allowed_set:
                             dropdown_html = "⚠️ Kein Wert angegeben oder keine Codeliste verfügbar"
                         else:
+                            sorted_options = sorted(allowed_set)  # ← HIER reinnehmen!
+                            old_value = value if value else "__LEER__"
                             # Bester Treffer per Ähnlichkeit bestimmen (Case-insensitive)
                             best_guess = ""
                             if value and allowed_set:
