@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, session
 import fitz  # PyMuPDF
 import uuid
 import tempfile
@@ -29,6 +29,7 @@ else:
 
 # Flask-App mit explizitem Pfad zu Templates und Static (für .exe)
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+app.secret_key = "supergeheimer-schlüssel"  # 🔒 für Session erforderlich
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
 
 # Dynamischer Basispfad je nach Umgebung (Render / lokal / PyInstaller)
