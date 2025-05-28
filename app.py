@@ -159,7 +159,7 @@ def validate_with_schematron(xml, xslt_path):
 def download_corrected():
     original_pdf_path = session.get("original_pdf_path")
     if not original_pdf_path or not os.path.exists(original_pdf_path):
-    return "❌ Originale PDF nicht gefunden.", 400
+        return "❌ Originale PDF nicht gefunden.", 400
     
     # Originale XML + Korrekturen aus Form abrufen
     xml_raw = request.form.get("xml_data")
