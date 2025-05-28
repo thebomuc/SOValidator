@@ -276,8 +276,7 @@ def index():
                         else:
                             sorted_options = sorted(allowed_set)
                             old_value = value if value else "__LEER__"
-                            dropdown_html = f'<label>→ Möglicherweise meinten Sie: '
-                            dropdown_html += f'<select name="correction">'
+                            dropdown_html = f'→ Möglicherweise meinten Sie: <select name="correction">'
                             for option in sorted_options:
                                 selected = 'selected' if option == value else ''
                                 dropdown_html += f'<option value="{label}|{old_value}|{option}" {selected}>{option}</option>'
