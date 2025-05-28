@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, send_file, session
+from markupsafe import Markup
 import fitz  # PyMuPDF
 import uuid
 import tempfile
@@ -282,7 +283,7 @@ def index():
                                 dropdown_html += f'<option value="{label}|{old_value}|{option}" {selected}>{option}</option>'
                             dropdown_html += '</select></label>'
 
-                        suggestion = dropdown_html
+                        suggestion = Markup(dropdown_html)
 
                         codelist_table.append({
                             "label": label,
