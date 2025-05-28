@@ -275,7 +275,16 @@ def index():
                         if not allowed_set:
                             dropdown_html = "⚠️ Kein Wert angegeben oder keine Codeliste verfügbar"
                         else:
-                            sorted_options = sorted(allowed_set)
+                            # Bester Treffer per Ähnlichkeit bestimmen (Case-insensitive)
+                            best_guess = ""
+                            if value and allowed_set:
+                                matches = get_close_matches(value.upper(), [v.upper() for v in allowed_set], n=1, cutoff=0.6)
+                                if matches:
+                                    for real_value in allowed_set:
+                                        if real_value.upper() == matches[0]:
+                                            best_guess = real_value
+                                            break
+                                            
                             old_value = value if value else "__LEER__"
                             closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
 
