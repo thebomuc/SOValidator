@@ -311,6 +311,7 @@ def index():
     # Hochgeladene Datei entfernen – wichtig für parallele Nutzung!
     #    if os.path.exists(file_path):
     #        os.remove(file_path)
+         pass  # Platzhalter, damit der Block nicht leer ist
 
     return render_template("index.html",
                            result=result,
