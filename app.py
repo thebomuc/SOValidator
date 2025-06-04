@@ -281,7 +281,7 @@ def index():
                 # Prüfe auf Fehlercodes trotzdem
                 error_reasons = check_errorcodes(None, file_path)
                 if error_reasons:
-                    result += "<br><br><b>SON Fehlererkennung:</b><ul>"
+                    result += "<br><br><b>Fehlererkennung:</b><ul>"
                     for reason in error_reasons:
                         result += f"<li>{reason}</li>"
                     result += "</ul>"
@@ -389,7 +389,7 @@ def index():
 
     # Fehlerausgabe ans Result anhängen
     if error_reasons:
-        result += "<br><b>Fehlererkennung:</b><ul>"
+        result += "<br><br><b>SON Fehlererkennung:</b><ul>"
         for reason in error_reasons:
             result += f"<li>{reason}</li>"
         result += "</ul>"
