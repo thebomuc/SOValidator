@@ -243,7 +243,7 @@ def download_corrected():
     basename, ext = os.path.splitext(orig_filename)
     download_name = f"{basename}_corrected.pdf"
 
-return send_file(corrected_pdf_path, as_attachment=True, download_name=download_name)
+    return send_file(corrected_pdf_path, as_attachment=True, download_name=download_name)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
