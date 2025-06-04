@@ -341,12 +341,27 @@ def index():
                         else:
                             sorted_options = sorted(allowed_set)
                             old_value = value if value else "__LEER__"
-                            closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
+                            # Bisher:
+                            # closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
+
+                            # Neu (voll integriert, inkl. Country/5305 Logik):
+                            if label == "5305" and value and value.upper() != value:
+                                if value.upper() in allowed_set:
+                                    closest_match = [value.upper()]
+                                else:
+                                    closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
+                            else:
+                                closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
                             dropdown_html = f'<label>→ Möglicherweise meinten Sie: '
                             dropdown_html += f'<select name="correction">'
                             for option in sorted_options:
+                                # Standard: closest_match wie gehabt
                                 selected = 'selected' if closest_match and option == closest_match[0] else ''
+                                # Für Country: Wenn leer, "DE" vorauswählen
+                                if label == "Country" and old_value == "__LEER__" and option == "DE":
+                                    selected = 'selected'
                                 dropdown_html += f'<option value="{label}|{old_value}|{option}" {selected}>{option}</option>'
+
                             dropdown_html += '</select></label>'
                         suggestion = Markup(dropdown_html)
                         codelist_table.append({
