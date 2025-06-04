@@ -1,16 +1,13 @@
 from flask import Flask, render_template, request, send_file, session
 from markupsafe import Markup
 import fitz  # PyMuPDF
-import uuid
 import tempfile
 from lxml import etree
 import os
 import re
 import pandas as pd
-from openpyxl import load_workbook
 from difflib import get_close_matches
 import sys
-import io
 
 # Dynamischer Pfad für PyInstaller (sys._MEIPASS) für statische Ressourcen und Templates
 if hasattr(sys, '_MEIPASS'):
@@ -28,20 +25,15 @@ else:
     EXCEL_PATH = os.path.join("static", "data", "4. EN16931+FacturX code lists values v14 - used from 2024-11-15.xlsx")
     DEFAULT_XSD_ROOT = os.path.join("ZF232_DE", "Schema")
 
-# Flask-App mit explizitem Pfad zu Templates und Static (für .exe)
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
-app.secret_key = "supergeheimer-schlüssel"  # 🔒 für Session erforderlich
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB Upload-Limit
+app.secret_key = "supergeheimer-schlüssel"
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
-# Dynamischer Basispfad je nach Umgebung (Render / lokal / PyInstaller)
-if hasattr(sys, '_MEIPASS'):
-    base_path = sys._MEIPASS
-else:
-    base_path = os.path.abspath(".")
-
-DEFAULT_XSD_ROOT = os.path.join(base_path, "ZF232_DE", "Schema")
-DEFAULT_XSLT_PATH = os.path.join(base_path, "EN16931-CII-validation.xslt")
-EXCEL_PATH = os.path.join(base_path, "static", "data", "4. EN16931+FacturX code lists values v14 - used from 2024-11-15.xlsx")
+MANDATORY_TAGS = [
+    "ram:ID", "ram:IssueDateTime", "ram:SellerTradeParty", "ram:BuyerTradeParty",
+    "ram:SpecifiedSupplyChainTradeDelivery", "ram:ApplicableHeaderTradeSettlement",
+    "ram:CountryID", "ram:InvoiceCurrencyCode", "ram:LineID", "ram:TypeCode"
+]
 
 codelists = {
     "Country": "Alpha-2 code",
@@ -82,12 +74,6 @@ for sheet, column in codelists.items():
         code_sets[sheet] = set(values)
     except Exception:
         code_sets[sheet] = set()
-
-MANDATORY_TAGS = [
-    "ram:ID", "ram:IssueDateTime", "ram:SellerTradeParty", "ram:BuyerTradeParty",
-    "ram:SpecifiedSupplyChainTradeDelivery", "ram:ApplicableHeaderTradeSettlement",
-    "ram:CountryID", "ram:InvoiceCurrencyCode", "ram:LineID", "ram:TypeCode"
-]
 
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
@@ -157,6 +143,62 @@ def validate_with_schematron(xml, xslt_path):
     except Exception as e:
         return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
 
+def check_errorcodes(xml, file_path):
+    """Prüft auf die Fehlercodes E0070, E0051, E0053, E0054 mit Begründung."""
+    reasons = []
+    allowed_xml_names = [
+        "ZUGFeRD-invoice.xml", "zugferd-invoice.xml", "factur-x.xml", "xrechnung.xml"
+    ]
+    # -- E0051: PDF-Prüfungen
+    try:
+        doc = fitz.open(file_path)
+        # Keine eingebettete XML?
+        if doc.embfile_count() == 0:
+            reasons.append("E0051: PDF enthält keine eingebettete Rechnung (also einfaches PDF, z.B. Stundenzettel).")
+        # PDF-Version prüfen
+        if not doc.pdf_version.startswith("1.7"):
+            reasons.append("E0051: PDF hat falsche PDF-Version (muss 1.7 sein).")
+        # PDF/A-3b prüfen (VeraPDF empfohlen, hier Metadaten-Check)
+        meta = doc.metadata or {}
+        if "/PDF/A-3" not in str(meta) and "/pdfaid:part>3<" not in str(doc.xref_get_key(1, 'metadata')):
+            reasons.append("E0051: PDF ist nicht PDF/A-3b konform (nur Metadatenprüfung, für volle Sicherheit VeraPDF verwenden).")
+        # Embedded-XML-Filename prüfen
+        if doc.embfile_count() > 0:
+            emb_name = doc.embfile_info(0).get("filename", "")
+            if emb_name not in allowed_xml_names:
+                reasons.append(
+                    "E0051: Filename der eingebetteten Rechnung ist nicht korrekt. "
+                    f"Gefunden: {emb_name}, erlaubt: {', '.join(allowed_xml_names)}"
+                )
+    except Exception:
+        reasons.append("E0051: PDF konnte nicht geprüft werden.")
+
+    # -- E0070: Rechnungsnummer/Charge auf Preisebene
+    # Fehlende Rechnungsnummer
+    if xml is not None:
+        if not re.search(r"<ram:ID>\s*\S+\s*</ram:ID>", xml):
+            reasons.append("E0070: Fehlende Rechnungsnummer im Dokument.")
+        # Charge auf Preisebene
+        if re.search(r"<ram:GrossPrice>.*?<ram:Charge>.*?</ram:Charge>.*?</ram:GrossPrice>", xml, re.DOTALL):
+            reasons.append("E0070: Charge auf Preisebene (unter GrossPrice) gefunden.")
+        # -- E0053: XML/Format-Prüfung
+        try:
+            etree.fromstring(xml.encode("utf-8"))
+        except Exception:
+            reasons.append("E0053: Invalides XML.")
+        # XRechnung-Format
+        if not re.search(r"<rsm:CrossIndustryInvoice", xml):
+            reasons.append("E0053: Ungültiges XRechnungs-Format (Root-Tag fehlt).")
+        # PEPPOL (sehr grob, Namespace-Prüfung empfohlen!)
+        if "peppol" in xml.lower() or re.search(r"urn:oasis:names:specification:ubl", xml, re.I):
+            reasons.append("E0053: PEPPOL-Format erkannt (nicht zulässig).")
+        # -- E0054: Nach Extraktion kein XML
+        try:
+            etree.fromstring(xml.encode("utf-8"))
+        except Exception:
+            reasons.append("E0054: Extrahiertes Objekt ist keine als XML klassifizierbare Datei (z.B. fehlendes End-Tag).")
+    return reasons
+
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
     original_pdf_path = session.get("original_pdf_path")
@@ -171,7 +213,6 @@ def download_corrected():
         tag, old, new = correction.split("|")
         corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
 
-    # Tempfile für das korrigierte PDF anlegen
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
     if doc.embfile_count() > 0:
@@ -190,6 +231,7 @@ def index():
     suggestions = []
     codelist_table = []
     syntax_table = []
+    error_reasons = []
 
     uploaded = request.files.get("pdf_file")
     if not uploaded or uploaded.filename == "":
@@ -201,7 +243,6 @@ def index():
     is_pdf = file_ext == ".pdf"
     is_xml = file_ext == ".xml" or uploaded.content_type in ["application/xml", "text/xml"]
 
-    # Temporäre, eindeutige Datei erzeugen
     tmp_suffix = file_ext if is_pdf or is_xml else ".bin"
     with tempfile.NamedTemporaryFile(delete=False, suffix=tmp_suffix) as tmp:
         file_path = tmp.name
@@ -215,6 +256,13 @@ def index():
             xml = extract_xml_from_pdf(file_path)
             if not xml:
                 result = "❌ Keine XML-Datei in der PDF gefunden."
+                # Prüfe auf Fehlercodes trotzdem
+                error_reasons = check_errorcodes(None, file_path)
+                if error_reasons:
+                    result += "<br><b>Fehlererkennung:</b><ul>"
+                    for reason in error_reasons:
+                        result += f"<li>{reason}</li>"
+                    result += "</ul>"
                 return render_template("index.html", result=result, filename=filename)
         elif is_xml:
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
@@ -223,7 +271,6 @@ def index():
             result = "❌ Ungültiger Dateityp. Bitte nur PDF oder XML hochladen."
             return render_template("index.html", result=result, filename=filename)
 
-        # → ab hier weiter mit xml-Validierung:
         valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
         result = msg
         if xml_suggestions:
@@ -232,7 +279,6 @@ def index():
         if valid:
             xsd_ok, xsd_msg = validate_against_all_xsds(xml, DEFAULT_XSD_ROOT)
             result += "<br>" + xsd_msg
-
             if os.path.exists(DEFAULT_XSLT_PATH) and request.form.get("schematron"):
                 sch_issues = validate_with_schematron(xml, DEFAULT_XSLT_PATH)
                 suggestions.extend(f"❌ {msg}" for msg in sch_issues)
@@ -264,39 +310,23 @@ def index():
                     raw = match.group(1) if match.lastindex else ""
                     value = raw.strip() if raw else ""
                     if value == "" or value not in allowed_set:
-                      if value == "" or value not in allowed_set:
                         start = match.start(1) if match.lastindex else match.start()
                         line_number = xml.count("\n", 0, start) + 1
                         offset = start - sum(len(l) + 1 for l in xml_lines[:line_number - 1])
                         column_number = offset + 1
-
                         if not allowed_set:
                             dropdown_html = "⚠️ Kein Wert angegeben oder keine Codeliste verfügbar"
                         else:
-                            sorted_options = sorted(allowed_set)  # ← HIER reinnehmen!
-                            old_value = value if value else "__LEER__"
-                            # Bester Treffer per Ähnlichkeit bestimmen (Case-insensitive)
-                            best_guess = ""
-                            if value and allowed_set:
-                                matches = get_close_matches(value.upper(), [v.upper() for v in allowed_set], n=1, cutoff=0.6)
-                                if matches:
-                                    for real_value in allowed_set:
-                                        if real_value.upper() == matches[0]:
-                                            best_guess = real_value
-                                            break
-                                            
+                            sorted_options = sorted(allowed_set)
                             old_value = value if value else "__LEER__"
                             closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
-
                             dropdown_html = f'<label>→ Möglicherweise meinten Sie: '
                             dropdown_html += f'<select name="correction">'
                             for option in sorted_options:
                                 selected = 'selected' if closest_match and option == closest_match[0] else ''
                                 dropdown_html += f'<option value="{label}|{old_value}|{option}" {selected}>{option}</option>'
                             dropdown_html += '</select></label>'
-
                         suggestion = Markup(dropdown_html)
-
                         codelist_table.append({
                             "label": label,
                             "value": value,
@@ -304,14 +334,20 @@ def index():
                             "line": line_number,
                             "column": column_number
                         })
-
         codelist_table.sort(key=lambda x: (x["line"], x["column"]))
 
+        # Fehlercode-Prüfung
+        error_reasons = check_errorcodes(xml, file_path)
+
     finally:
-    # Hochgeladene Datei entfernen – wichtig für parallele Nutzung!
-    #    if os.path.exists(file_path):
-    #        os.remove(file_path)
-         pass  # Platzhalter, damit der Block nicht leer ist
+        pass
+
+    # Fehlerausgabe ans Result anhängen
+    if error_reasons:
+        result += "<br><b>Fehlererkennung:</b><ul>"
+        for reason in error_reasons:
+            result += f"<li>{reason}</li>"
+        result += "</ul>"
 
     return render_template("index.html",
                            result=result,
@@ -322,12 +358,10 @@ def index():
                            syntax_table=syntax_table,
                            codelist_table=codelist_table,
                            codelisten_hinweis="ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15).",
-                           original_xml=xml)  # <-- korrekt eingerückt und am Ende mit Komma davor
+                           original_xml=xml)
 
 if __name__ == "__main__":
     if hasattr(sys, '_MEIPASS'):
-        # .exe-Version (PyInstaller)
         app.run(debug=True, host="127.0.0.1", port=5000)
     else:
-        # Lokale Entwicklung oder z. B. Render-Deployment
-        app.run(debug=True, host="0.0.0.0", port=5000)
+        app.run(debug=True, host="0.0.0.0", port=5000
