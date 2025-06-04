@@ -341,17 +341,25 @@ def index():
                         else:
                             sorted_options = sorted(allowed_set)
                             old_value = value if value else "__LEER__"
-                            # Bisher:
-                            # closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
+    
+                            # 1. Prefix-Match (z.B. "58ggg" => "58" bei Payment)
+                            prefix_match = None
+                            for option in allowed_set:
+                                if value and value.startswith(option):
+                                    prefix_match = option
+                                    break
 
-                            # Neu (voll integriert, inkl. Country/5305 Logik):
-                            if label == "5305" and value and value.upper() != value:
+                            # 2. Korrekturvorschlags-Logik
+                            if prefix_match:
+                                closest_match = [prefix_match]
+                            elif label == "5305" and value and value.upper() != value:
                                 if value.upper() in allowed_set:
                                     closest_match = [value.upper()]
                                 else:
                                     closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
                             else:
                                 closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
+
                             dropdown_html = f'<label>→ Möglicherweise meinten Sie: '
                             dropdown_html += f'<select name="correction">'
                             for option in sorted_options:
@@ -361,8 +369,8 @@ def index():
                                 if label == "Country" and old_value == "__LEER__" and option == "DE":
                                     selected = 'selected'
                                 dropdown_html += f'<option value="{label}|{old_value}|{option}" {selected}>{option}</option>'
-
                             dropdown_html += '</select></label>'
+
                         suggestion = Markup(dropdown_html)
                         codelist_table.append({
                             "label": label,
