@@ -65,14 +65,14 @@
     </form>
         {% if codelist_table %}
     <form method="POST" action="/download_corrected" style="margin:0;">
-        <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
-        {% for row in codelist_table %}
-            {% if row.suggestion %}
-                <input type="hidden" name="correction" value="{{ row.suggestion|striptags|safe }}">
-            {% endif %}
-        {% endfor %}
-        <button type="submit" style="white-space:nowrap;">📥 Korrigierte PDF herunterladen</button>
-    </form>
+    <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
+    {% for row in codelist_table %}
+        {% if row.correction_value %}
+            <input type="hidden" name="correction" value="{{ row.correction_value }}">
+        {% endif %}
+    {% endfor %}
+    <button type="submit" style="white-space:nowrap;">📥 Korrigierte PDF herunterladen</button>
+</form>
     {% endif %}
 </div>
 
