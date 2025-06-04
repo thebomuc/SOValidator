@@ -377,7 +377,8 @@ def index():
                             "value": value,
                             "suggestion": suggestion,
                             "line": line_number,
-                            "column": column_number
+                            "column": column_number,
+                            "correction_value": f"{label}|{value if value else '__LEER__'}|{closest_match[0] if closest_match else ''}"
                         })
         codelist_table.sort(key=lambda x: (x["line"], x["column"]))
 
