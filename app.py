@@ -94,7 +94,7 @@ def check_errorcodes(xml, file_path):
             meta = doc.metadata or {}
             pdf_version = meta.get("pdf:PDFVersion") or meta.get("format")
         if not pdf_version or "1.7" not in str(pdf_version):
-            reasons.append(f"E0051: PDF hat falsche PDF-Version ({pdf_version}). Muss 1.7 sein.")
+            reasons.append(f"E0051: PDF hat PDF-Version: ({pdf_version}). Bei FACTUR-X sagt die Norm 1.7")
 
         # 3. PDF/A-3-Kennung in Metadaten (nicht rechtssicher!)
         meta_str = str(doc.metadata)
