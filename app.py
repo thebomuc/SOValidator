@@ -162,22 +162,20 @@ def download_corrected():
     original_pdf_path = session.get("original_pdf_path")
     if not original_pdf_path or not os.path.exists(original_pdf_path):
         return "❌ Originale PDF nicht gefunden.", 400
-    
-    # Originale XML + Korrekturen aus Form abrufen
+
     xml_raw = request.form.get("xml_data")
-    corrections = request.form.getlist("correction")  # z. B. ["5305|s|S", ...]
-    
-    # XML anwenden
+    corrections = request.form.getlist("correction")
+
     corrected_xml = xml_raw
     for correction in corrections:
         tag, old, new = correction.split("|")
         corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
 
-    # XML in PDF einbetten (vereinfacht)
-    original_pdf_path = "uploaded.pdf"
-    corrected_pdf_path = "corrected.pdf"
+    # Tempfile für das korrigierte PDF anlegen
+    corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
-    doc.embfile_del(0)
+    if doc.embfile_count() > 0:
+        doc.embfile_del(0)
     doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
     doc.save(corrected_pdf_path)
 
