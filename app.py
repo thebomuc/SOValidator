@@ -88,14 +88,12 @@ def check_errorcodes(xml, file_path):
             reasons.append("E0051: PDF enthält keine eingebettete Rechnung (weder XML, noch irgendetwas anderes).")
         # 2. PDF-Version prüfen
         pdf_version = None
-        # Erst moderner Weg, dann fallback auf Metadaten
         if hasattr(doc, "pdf_version"):
             pdf_version = doc.pdf_version
         else:
             meta = doc.metadata or {}
-            # Je nach PyMuPDF-Version: 'pdf:PDFVersion' oder 'format'
             pdf_version = meta.get("pdf:PDFVersion") or meta.get("format")
-        if not pdf_version or not str(pdf_version).startswith("1.7"):
+        if not pdf_version or "1.7" not in str(pdf_version):
             reasons.append(f"E0051: PDF hat falsche PDF-Version ({pdf_version}). Muss 1.7 sein.")
 
         # 3. PDF/A-3-Kennung in Metadaten (nicht rechtssicher!)
