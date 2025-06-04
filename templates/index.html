@@ -41,27 +41,74 @@
             padding: 0.5em;
             overflow-x: auto;
         }
+        .button-row {
+            display: flex;
+            gap: 1em;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
     <h1>SOValidator – PDF/XML Validierung</h1>
 
-<form method="POST" enctype="multipart/form-data">
-    <div class="box">
-        <label>PDF- oder XML-Datei hochladen:</label><br><br>
-        <input type="file" name="pdf_file" accept=".pdf,.xml" required>
-        <br><br>
-        <label><input type="checkbox" name="schematron"> Schematron-Prüfung aktivieren</label><br>
-        <label><input type="checkbox" name="nonstandard"> Nicht-standardisierte Tags anzeigen</label><br><br>
-        <button type="submit">Prüfen</button>
-    </div>
-</form>
+    <form method="POST" enctype="multipart/form-data" id="validator-form">
+        <div class="box">
+            <label>PDF- oder XML-Datei hochladen:</label><br><br>
+            <input type="file" name="pdf_file" accept=".pdf,.xml" required>
+            <br><br>
+            <label><input type="checkbox" name="schematron"> Schematron-Prüfung aktivieren</label><br>
+            <label><input type="checkbox" name="nonstandard"> Nicht-standardisierte Tags anzeigen</label><br><br>
+            <div class="button-row">
+                <button type="submit">Prüfen</button>
+                {% if codelist_table %}
+                <form method="POST" action="/download_corrected" style="margin:0;">
+                    <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
+                    {% for row in codelist_table %}
+                        {% if row.suggestion %}
+                            <input type="hidden" name="correction" value="{{ row.suggestion|striptags|safe }}">
+                        {% endif %}
+                    {% endfor %}
+                    <button type="submit" style="white-space:nowrap;">📥 Korrigierte PDF herunterladen</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </form>
 
-<!--{% if filename %}
-       <div class="box">
-       <h4>📄 Datei: {{ filename }}</h4>
+    {% if codelist_table %}
+    <div class="box">
+        <h3>📚 Codelistenverletzungen</h3>
+        <p style="font-size: 0.9em;">{{ codelisten_hinweis }}</p>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:8%;">Zeile</th>
+                    <th style="width:8%;">Zeichen</th>
+                    <th style="width:15%;">Feld</th>
+                    <th style="width:25%;">Fehlerhafter Wert</th>
+                    <th>Korrekturvorschlag</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in codelist_table %}
+                <tr>
+                    <td>{{ row.line }}</td>
+                    <td>{{ row.column }}</td>
+                    <td>{{ row.label }}</td>
+                    <td><span class="highlight">{{ row.value }}</span></td>
+                    <td>
+                        {% if row.suggestion %}
+                            <span style="color:orange">{{ row.suggestion }}</span>
+                        {% else %}
+                            &ndash;
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    {% endif %}  -->
+    {% endif %}
 
     {% if result %}
     <div class="box">
@@ -69,41 +116,6 @@
         <div>{{ result|safe }}</div>
     </div>
     {% endif %}
-
-       {% if codelist_table %}
-<div class="box">
-    <h3>📚 Codelistenverletzungen</h3>
-    <p style="font-size: 0.9em;">{{ codelisten_hinweis }}</p>
-    <table>
-        <thead>
-            <tr>
-                <th style="width:8%;">Zeile</th>
-                <th style="width:8%;">Zeichen</th>
-                <th style="width:15%;">Feld</th>
-                <th style="width:25%;">Fehlerhafter Wert</th>
-                <th>Korrekturvorschlag</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in codelist_table %}
-            <tr>
-                <td>{{ row.line }}</td>
-                <td>{{ row.column }}</td>
-                <td>{{ row.label }}</td>
-                <td><span class="highlight">{{ row.value }}</span></td>
-                <td>
-                    {% if row.suggestion %}
-                        <span style="color:orange">{{ row.suggestion }}</span>
-                    {% else %}
-                        &ndash;
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endif %}
 
     {% if syntax_table %}
     <div class="box">
@@ -134,25 +146,6 @@
         </pre>
     </div>
     {% endif %}
-
-{% if codelist_table %}
-<div class="box">
-    <h3>🎛️ Codelisten-Korrekturvorschläge</h3>
-    <form method="POST" action="/download_corrected">
-        <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
-        <table>
-            <thead>
-                <tr>
-                    <th>Feld</th>
-                    <th>Gefundener Wert</th>
-                    <th>Vorschlag (Dropdown)</th>
-                </tr>
-            </thead>
-        </table>
-        <button type="submit">📥 Korrigierte PDF herunterladen</button>
-    </form>
-</div>
-{% endif %}
 
 </body>
 </html>
