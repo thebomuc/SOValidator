@@ -85,7 +85,7 @@ def check_errorcodes(xml, file_path):
         doc = fitz.open(file_path)
         # 1. Keine eingebettete XML?
         if doc.embfile_count() == 0:
-            reasons.append("E0051: PDF enthält keine eingebettete Rechnung (z.B. Stundenzettel).")
+            reasons.append("E0051: PDF enthält keine eingebettete Rechnung (weder XML, noch irgendetwas anderes).")
         # 2. PDF-Version prüfen
         pdf_version = None
         # Erst moderner Weg, dann fallback auf Metadaten
@@ -236,7 +236,14 @@ def download_corrected():
     doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
     doc.save(corrected_pdf_path)
 
-    return send_file(corrected_pdf_path, as_attachment=True)
+    # Hole den ursprünglichen Namen
+    orig_filename = session.get("uploaded_filename")
+    if not orig_filename:
+        orig_filename = "Rechnung"
+    basename, ext = os.path.splitext(orig_filename)
+    download_name = f"{basename}_corrected.pdf"
+
+return send_file(corrected_pdf_path, as_attachment=True, download_name=download_name)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -255,6 +262,7 @@ def index():
         return render_template("index.html", result=result, filename=filename)
 
     filename = uploaded.filename
+    session["uploaded_filename"] = filename
     file_ext = os.path.splitext(filename)[1].lower()
     is_pdf = file_ext == ".pdf"
     is_xml = file_ext == ".xml" or uploaded.content_type in ["application/xml", "text/xml"]
