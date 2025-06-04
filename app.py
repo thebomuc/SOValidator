@@ -149,19 +149,35 @@ def check_errorcodes(xml, file_path):
     allowed_xml_names = [
         "ZUGFeRD-invoice.xml", "zugferd-invoice.xml", "factur-x.xml", "xrechnung.xml"
     ]
+    import subprocess
+
+def check_errorcodes(xml, file_path):
+    reasons = []
+    allowed_xml_names = [
+        "ZUGFeRD-invoice.xml", "zugferd-invoice.xml", "factur-x.xml", "xrechnung.xml"
+    ]
     # -- E0051: PDF-Prüfungen
     try:
         doc = fitz.open(file_path)
         # Keine eingebettete XML?
         if doc.embfile_count() == 0:
             reasons.append("E0051: PDF enthält keine eingebettete Rechnung (also einfaches PDF, z.B. Stundenzettel).")
-        # PDF-Version prüfen
+        # PDF-Version prüfen (MUSS '1.7' sein)
         if not doc.pdf_version.startswith("1.7"):
-            reasons.append("E0051: PDF hat falsche PDF-Version (muss 1.7 sein).")
-        # PDF/A-3b prüfen (VeraPDF empfohlen, hier Metadaten-Check)
-        meta = doc.metadata or {}
-        if "/PDF/A-3" not in str(meta) and "/pdfaid:part>3<" not in str(doc.xref_get_key(1, 'metadata')):
-            reasons.append("E0051: PDF ist nicht PDF/A-3b konform (nur Metadatenprüfung, für volle Sicherheit VeraPDF verwenden).")
+            reasons.append(f"E0051: PDF hat falsche PDF-Version ({doc.pdf_version}). Muss 1.7 sein.")
+        # PDF/A-3-Prüfung mit VeraPDF (CLI!)
+        try:
+            # VeraPDF CLI aufrufen und nach "compliant=" im XML-Output suchen
+            result = subprocess.run(
+                ["verapdf", "--format", "xml", "--profile", "3b", file_path],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15
+            )
+            output = result.stdout.decode("utf-8", errors="ignore")
+            # PDF/A-3b-Konform? Suche nach <isCompliant>true</isCompliant>
+            if "<isCompliant>true</isCompliant>" not in output:
+                reasons.append("E0051: PDF ist **nicht** PDF/A-3b konform (geprüft mit VeraPDF).")
+        except Exception as ve:
+            reasons.append(f"E0051: PDF/A-3b-Prüfung via VeraPDF nicht möglich: {ve}")
         # Embedded-XML-Filename prüfen
         if doc.embfile_count() > 0:
             emb_name = doc.embfile_info(0).get("filename", "")
@@ -170,9 +186,9 @@ def check_errorcodes(xml, file_path):
                     "E0051: Filename der eingebetteten Rechnung ist nicht korrekt. "
                     f"Gefunden: {emb_name}, erlaubt: {', '.join(allowed_xml_names)}"
                 )
-    except Exception:
-        reasons.append("E0051: PDF konnte nicht geprüft werden.")
-
+    except Exception as e:
+        reasons.append(f"E0051: PDF konnte nicht geprüft werden. ({e})")
+    
     # -- E0070: Rechnungsnummer/Charge auf Preisebene
     # Fehlende Rechnungsnummer
     if xml is not None:
