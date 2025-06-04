@@ -65,7 +65,7 @@
     </form>
         {% if codelist_table %}
     <form method="POST" action="/download_corrected" style="margin:0;">
-    <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
+    <textarea name="xml_data" style="display:none;">{{ original_xml|default('')|e }}</textarea>
     {% for row in codelist_table %}
         {% if row.correction_value %}
             <input type="hidden" name="correction" value="{{ row.correction_value }}">
