@@ -75,6 +75,69 @@ for sheet, column in codelists.items():
     except Exception:
         code_sets[sheet] = set()
 
+def check_errorcodes(xml, file_path):
+    reasons = []
+    allowed_xml_names = [
+        "ZUGFeRD-invoice.xml", "zugferd-invoice.xml", "factur-x.xml", "xrechnung.xml"
+    ]
+    # --- E0051: PDF-Prüfungen ohne VeraPDF ---
+    try:
+        doc = fitz.open(file_path)
+        # 1. Keine eingebettete XML?
+        if doc.embfile_count() == 0:
+            reasons.append("E0051: PDF enthält keine eingebettete Rechnung (z.B. Stundenzettel).")
+        # 2. PDF-Version prüfen
+        if not doc.pdf_version.startswith("1.7"):
+            reasons.append(f"E0051: PDF hat falsche PDF-Version ({doc.pdf_version}). Muss 1.7 sein.")
+        # 3. PDF/A-3-Kennung in Metadaten (nicht rechtssicher!)
+        meta_str = str(doc.metadata)
+        pdfa3_hint = False
+        if "/PDF/A-3" in meta_str or "/pdfaid:part>3<" in meta_str:
+            pdfa3_hint = True
+        for xref in range(1, doc.xref_length()):
+            try:
+                stream = doc.xref_stream(xref)
+                if b'PDF/A-3' in stream or b'pdfaid:part>3<' in stream:
+                    pdfa3_hint = True
+                    break
+            except Exception:
+                pass
+        if not pdfa3_hint:
+            reasons.append("E0051: PDF scheint kein PDF/A-3 zu sein (Metadatenprüfung, unsicher).")
+        # 4. Embedded-XML-Filename prüfen
+        if doc.embfile_count() > 0:
+            emb_name = doc.embfile_info(0).get("filename", "")
+            if emb_name not in allowed_xml_names:
+                reasons.append(
+                    "E0051: Filename der eingebetteten Rechnung ist nicht korrekt. "
+                    f"Gefunden: {emb_name}, erlaubt: {', '.join(allowed_xml_names)}"
+                )
+    except Exception as e:
+        reasons.append(f"E0051: PDF konnte nicht geprüft werden. ({e})")
+    # --- E0070: Rechnungsnummer/Charge auf Preisebene ---
+    if xml is not None:
+        if not re.search(r"<ram:ID>\s*\S+\s*</ram:ID>", xml):
+            reasons.append("E0070: Fehlende Rechnungsnummer im Dokument.")
+        if re.search(r"<ram:GrossPrice>.*?<ram:Charge>.*?</ram:Charge>.*?</ram:GrossPrice>", xml, re.DOTALL):
+            reasons.append("E0070: Charge auf Preisebene (unter GrossPrice) gefunden.")
+        # --- E0053: XML/Format-Prüfung ---
+        try:
+            etree.fromstring(xml.encode("utf-8"))
+        except Exception:
+            reasons.append("E0053: Invalides XML.")
+        # XRechnung-Format
+        if not re.search(r"<rsm:CrossIndustryInvoice", xml):
+            reasons.append("E0053: Ungültiges XRechnungs-Format (Root-Tag fehlt).")
+        # PEPPOL (grobe Erkennung)
+        if "peppol" in xml.lower() or re.search(r"urn:oasis:names:specification:ubl", xml, re.I):
+            reasons.append("E0053: PEPPOL-Format erkannt (nicht zulässig).")
+        # --- E0054: Nach Extraktion kein XML ---
+        try:
+            etree.fromstring(xml.encode("utf-8"))
+        except Exception:
+            reasons.append("E0054: Extrahiertes Objekt ist keine als XML klassifizierbare Datei (z.B. fehlendes End-Tag).")
+    return reasons
+
 def extract_xml_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
     for i in range(doc.embfile_count()):
@@ -142,78 +205,6 @@ def validate_with_schematron(xml, xslt_path):
         return [fa.find("svrl:text", namespaces={"svrl": "http://purl.oclc.org/dsdl/svrl"}).text for fa in failed]
     except Exception as e:
         return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
-
-def check_errorcodes(xml, file_path):
-    """Prüft auf die Fehlercodes E0070, E0051, E0053, E0054 mit Begründung."""
-    reasons = []
-    allowed_xml_names = [
-        "ZUGFeRD-invoice.xml", "zugferd-invoice.xml", "factur-x.xml", "xrechnung.xml"
-    ]
-    import subprocess
-
-def check_errorcodes(xml, file_path):
-    reasons = []
-    allowed_xml_names = [
-        "ZUGFeRD-invoice.xml", "zugferd-invoice.xml", "factur-x.xml", "xrechnung.xml"
-    ]
-    # -- E0051: PDF-Prüfungen
-    try:
-        doc = fitz.open(file_path)
-        # Keine eingebettete XML?
-        if doc.embfile_count() == 0:
-            reasons.append("E0051: PDF enthält keine eingebettete Rechnung (also einfaches PDF, z.B. Stundenzettel).")
-        # PDF-Version prüfen (MUSS '1.7' sein)
-        if not doc.pdf_version.startswith("1.7"):
-            reasons.append(f"E0051: PDF hat falsche PDF-Version ({doc.pdf_version}). Muss 1.7 sein.")
-        # PDF/A-3-Prüfung mit VeraPDF (CLI!)
-        try:
-            # VeraPDF CLI aufrufen und nach "compliant=" im XML-Output suchen
-            result = subprocess.run(
-                ["verapdf", "--format", "xml", "--profile", "3b", file_path],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15
-            )
-            output = result.stdout.decode("utf-8", errors="ignore")
-            # PDF/A-3b-Konform? Suche nach <isCompliant>true</isCompliant>
-            if "<isCompliant>true</isCompliant>" not in output:
-                reasons.append("E0051: PDF ist **nicht** PDF/A-3b konform (geprüft mit VeraPDF).")
-        except Exception as ve:
-            reasons.append(f"E0051: PDF/A-3b-Prüfung via VeraPDF nicht möglich: {ve}")
-        # Embedded-XML-Filename prüfen
-        if doc.embfile_count() > 0:
-            emb_name = doc.embfile_info(0).get("filename", "")
-            if emb_name not in allowed_xml_names:
-                reasons.append(
-                    "E0051: Filename der eingebetteten Rechnung ist nicht korrekt. "
-                    f"Gefunden: {emb_name}, erlaubt: {', '.join(allowed_xml_names)}"
-                )
-    except Exception as e:
-        reasons.append(f"E0051: PDF konnte nicht geprüft werden. ({e})")
-    
-    # -- E0070: Rechnungsnummer/Charge auf Preisebene
-    # Fehlende Rechnungsnummer
-    if xml is not None:
-        if not re.search(r"<ram:ID>\s*\S+\s*</ram:ID>", xml):
-            reasons.append("E0070: Fehlende Rechnungsnummer im Dokument.")
-        # Charge auf Preisebene
-        if re.search(r"<ram:GrossPrice>.*?<ram:Charge>.*?</ram:Charge>.*?</ram:GrossPrice>", xml, re.DOTALL):
-            reasons.append("E0070: Charge auf Preisebene (unter GrossPrice) gefunden.")
-        # -- E0053: XML/Format-Prüfung
-        try:
-            etree.fromstring(xml.encode("utf-8"))
-        except Exception:
-            reasons.append("E0053: Invalides XML.")
-        # XRechnung-Format
-        if not re.search(r"<rsm:CrossIndustryInvoice", xml):
-            reasons.append("E0053: Ungültiges XRechnungs-Format (Root-Tag fehlt).")
-        # PEPPOL (sehr grob, Namespace-Prüfung empfohlen!)
-        if "peppol" in xml.lower() or re.search(r"urn:oasis:names:specification:ubl", xml, re.I):
-            reasons.append("E0053: PEPPOL-Format erkannt (nicht zulässig).")
-        # -- E0054: Nach Extraktion kein XML
-        try:
-            etree.fromstring(xml.encode("utf-8"))
-        except Exception:
-            reasons.append("E0054: Extrahiertes Objekt ist keine als XML klassifizierbare Datei (z.B. fehlendes End-Tag).")
-    return reasons
 
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
