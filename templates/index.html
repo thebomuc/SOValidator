@@ -50,7 +50,7 @@
 </head>
 <body>
     <h1>SOValidator – PDF/XML Validierung</h1>
-
+<div style="display:flex;gap:1em;align-items:center;">
     <form method="POST" enctype="multipart/form-data" id="validator-form">
         <div class="box">
             <label>PDF- oder XML-Datei hochladen:</label><br><br>
@@ -60,20 +60,21 @@
             <label><input type="checkbox" name="nonstandard"> Nicht-standardisierte Tags anzeigen</label><br><br>
             <div class="button-row">
                 <button type="submit">Prüfen</button>
-                {% if codelist_table %}
-                <form method="POST" action="/download_corrected" style="margin:0;">
-                    <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
-                    {% for row in codelist_table %}
-                        {% if row.suggestion %}
-                            <input type="hidden" name="correction" value="{{ row.suggestion|striptags|safe }}">
-                        {% endif %}
-                    {% endfor %}
-                    <button type="submit" style="white-space:nowrap;">📥 Korrigierte PDF herunterladen</button>
-                </form>
-                {% endif %}
             </div>
         </div>
     </form>
+        {% if codelist_table %}
+    <form method="POST" action="/download_corrected" style="margin:0;">
+        <input type="hidden" name="xml_data" value="{{ original_xml|default('')|tojson|safe }}">
+        {% for row in codelist_table %}
+            {% if row.suggestion %}
+                <input type="hidden" name="correction" value="{{ row.suggestion|striptags|safe }}">
+            {% endif %}
+        {% endfor %}
+        <button type="submit" style="white-space:nowrap;">📥 Korrigierte PDF herunterladen</button>
+    </form>
+    {% endif %}
+</div>
 
     {% if codelist_table %}
     <div class="box">
