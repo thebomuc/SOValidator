@@ -339,15 +339,21 @@ def index():
                 r'<ram:InvoicedQuantity[^>]*?unitCode="(.*?)"'
             ]
         }
-
         for label, patterns in element_context_mapping.items():
             allowed_set = code_sets.get(label, set())
             for pattern in patterns:
                 regex = re.compile(pattern)
                 for match in regex.finditer(xml):
-                    raw = match.group(1) if match.lastindex else ""
-                    value = raw.strip() if raw else ""
+                    value = match.group(1).strip() if match.lastindex and match.group(1) else ""
                     if value == "" or value not in allowed_set:
+        #for label, patterns in element_context_mapping.items():
+        #    allowed_set = code_sets.get(label, set())
+        #    for pattern in patterns:
+        #        regex = re.compile(pattern)
+        #        for match in regex.finditer(xml):
+        #            raw = match.group(1) if match.lastindex else ""
+        #            value = raw.strip() if raw else ""
+        #            if value == "" or value not in allowed_set:
                         start = match.start(1) if match.lastindex else match.start()
                         line_number = xml.count("\n", 0, start) + 1
                         offset = start - sum(len(l) + 1 for l in xml_lines[:line_number - 1])
