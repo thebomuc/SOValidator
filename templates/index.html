@@ -65,24 +65,29 @@
         </div>
     </form>
 
-        {% if filename %}
-        <h4>📄 Geprüfte Datei: {{ filename }}</h4>
-        {% if xml_standard %}
-          <span style="color:#006699;"><b>Erkannter Standard:</b> {{ xml_standard }}</span>
-        {% endif %}
+{% if filename %}
+  <div class="box" style="display: block; margin-bottom: 2em;">
+    <div>
+      <h4 style="margin:0;">📄 Geprüfte Datei: {{ filename }}</h4>
+    </div>
+    {% if xml_standard %}
+      <div>
+        <span style="color:#006699;"><b>Erkannter Standard:</b> {{ xml_standard }}</span>
+      </div>
     {% endif %}
-    
-        {% if codelist_table %}
-    <form method="POST" action="/download_corrected" style="margin:0;">
-    <textarea name="xml_data" style="display:none;">{{ original_xml|default('')|e }}</textarea>
-    {% for row in codelist_table %}
-        {% if row.correction_value %}
+    {% if codelist_table %}
+      <form method="POST" action="/download_corrected" style="margin-top:1em;">
+        <textarea name="xml_data" style="display:none;">{{ original_xml|default('')|e }}</textarea>
+        {% for row in codelist_table %}
+          {% if row.correction_value %}
             <input type="hidden" name="correction" value="{{ row.correction_value }}">
-        {% endif %}
-    {% endfor %}
-    <button type="submit" style="white-space:nowrap;">📥 Korrigierte PDF herunterladen</button>
-</form>
+          {% endif %}
+        {% endfor %}
+        <button type="submit" style="white-space:nowrap;">📥 Korrigierte PDF herunterladen</button>
+      </form>
     {% endif %}
+  </div>
+{% endif %}
 </div>
 
     {% if codelist_table %}
