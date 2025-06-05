@@ -135,9 +135,9 @@ def check_errorcodes(xml, file_path):
         # XRechnung-Format
         if not re.search(r"<rsm:CrossIndustryInvoice", xml):
             reasons.append("E0053: Ungültiges XRechnungs-Format (Root-Tag fehlt).")
-        # PEPPOL (grobe Erkennung)
-        if "peppol" in xml.lower() or re.search(r"urn:oasis:names:specification:ubl", xml, re.I):
-            reasons.append("E0053: PEPPOL-Format erkannt (nicht zulässig).")
+        # Prüfe auf UBL/PEPPOL nur am Root-Tag!
+        if re.search(r'<Invoice[^>]+xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"', xml):
+            reasons.append("E0053: PEPPOL UBL-Format erkannt (nicht zulässig für XRechnung/Factur-X-Workflow).")
         # --- E0054: Nach Extraktion kein XML ---
         try:
             etree.fromstring(xml.encode("utf-8"))
