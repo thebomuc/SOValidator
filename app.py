@@ -213,6 +213,20 @@ def validate_with_schematron(xml, xslt_path):
     except Exception as e:
         return [f"⚠️ Fehler bei Schematron-Validierung: {str(e)}"]
 
+def detect_xml_standard(xml):
+    if xml is None:
+        return "Unbekannt"
+    # UBL-2.1/2.2/2.3 (Invoice-2)
+    if re.search(r'<Invoice[^>]+xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"', xml):
+        return "UBL Invoice-2"
+    # XRechnung/Factur-X/CII
+    if re.search(r'<rsm:CrossIndustryInvoice', xml):
+        return "CII (CrossIndustryInvoice – z.B. XRechnung, Factur-X, ZUGFeRD)"
+    # PEPPOL Hinweis
+    if "peppol" in xml.lower():
+        return "PEPPOL UBL"
+    return "Unbekannt"
+
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
     original_pdf_path = session.get("original_pdf_path")
@@ -292,6 +306,8 @@ def index():
         else:
             result = "❌ Ungültiger Dateityp. Bitte nur PDF oder XML hochladen."
             return render_template("index.html", result=result, filename=filename)
+
+        xml_standard = detect_xml_standard(xml)
 
         valid, msg, excerpt, highlight_line, xml_suggestions = validate_xml(xml)
         result = msg
@@ -404,7 +420,8 @@ def index():
                            syntax_table=syntax_table,
                            codelist_table=codelist_table,
                            codelisten_hinweis="ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15).",
-                           original_xml=xml)
+                           original_xml=xml),
+                           xml_standard=xml_standard
 
 if __name__ == "__main__":
     if hasattr(sys, '_MEIPASS'):
