@@ -241,17 +241,26 @@ def download_corrected():
         tag, old, new = correction.split("|")
         corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
 
+    # Neues PDF, alle Anhänge löschen!
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
-    if doc.embfile_count() > 0:
-        doc.embfile_del(0)
-    doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
-    doc.save(corrected_pdf_path)
 
-    # Hole den ursprünglichen Namen
-    orig_filename = session.get("uploaded_filename")
-    if not orig_filename:
-        orig_filename = "Rechnung"
+    # Lösche ALLE bestehenden embedded Dateien
+    for i in reversed(range(doc.embfile_count())):
+        doc.embfile_del(i)
+
+    # XML korrekt neu einbetten
+    doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
+
+    doc.save(corrected_pdf_path)
+    doc.close()
+
+    # Prüfe (Debug): Ist jetzt 1 XML drin?
+    # test_doc = fitz.open(corrected_pdf_path)
+    # print("DEBUG: embedded files after save:", test_doc.embfile_count())
+    # test_doc.close()
+
+    orig_filename = session.get("uploaded_filename", "Rechnung.pdf")
     basename, ext = os.path.splitext(orig_filename)
     download_name = f"{basename}_corrected.pdf"
 
