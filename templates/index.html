@@ -111,7 +111,14 @@
     </div>
     {% endif %}
 
-    <span style="font-size:1.1em;color:#336699;"><b>Datei:</b> {{ filename }}</span>
+{% if filename %}
+  <div class="box" style="display:flex; align-items:center; gap:2em;">
+    <h4>📄 Geprüfte Datei: {{ filename }}</h4>
+    {% if xml_standard %}
+      <span style="color:#006699;"><b>Erkannter Standard:</b> {{ xml_standard }}</span>
+    {% endif %}
+  </div>
+{% endif %}
 
     {% if result %}
     <div class="box">
