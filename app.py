@@ -420,8 +420,9 @@ def index():
                            syntax_table=syntax_table,
                            codelist_table=codelist_table,
                            codelisten_hinweis="ℹ️ Hinweis: Codelistenprüfung basiert auf EN16931 v14 (gültig ab 2024-11-15).",
-                           original_xml=xml),
+                           original_xml=xml,
                            xml_standard=xml_standard
+    )
 
 if __name__ == "__main__":
     if hasattr(sys, '_MEIPASS'):
