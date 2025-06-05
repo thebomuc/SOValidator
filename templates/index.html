@@ -50,16 +50,6 @@
 </head>
 <body>
     <h1>SOValidator – PDF/XML Validierung</h1>
-
-    {# Box mit Dateiname und erkanntem Standard ganz oben nach der Überschrift #}
-    {% if filename %}
-      <div class="box" style="display:flex; align-items:center; gap:2em;">
-        <h4>📄 Geprüfte Datei: {{ filename }}</h4>
-        {% if xml_standard %}
-          <span style="color:#006699;"><b>Erkannter Standard:</b> {{ xml_standard }}</span>
-        {% endif %}
-      </div>
-    {% endif %}
     
 <div style="display:flex;gap:1em;align-items:center;">
     <form method="POST" enctype="multipart/form-data" id="validator-form">
@@ -74,6 +64,14 @@
             </div>
         </div>
     </form>
+
+        {% if filename %}
+        <h4>📄 Geprüfte Datei: {{ filename }}</h4>
+        {% if xml_standard %}
+          <span style="color:#006699;"><b>Erkannter Standard:</b> {{ xml_standard }}</span>
+        {% endif %}
+    {% endif %}
+    
         {% if codelist_table %}
     <form method="POST" action="/download_corrected" style="margin:0;">
     <textarea name="xml_data" style="display:none;">{{ original_xml|default('')|e }}</textarea>
