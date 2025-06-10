@@ -357,41 +357,41 @@ def index():
     try:
         # XML aus PDF extrahieren oder direkt einlesen
         if is_pdf:
-        xml = extract_xml_from_pdf(file_path)
-        if not xml:
-            # Forensisch nach Roh-XML suchen!
-            raw_xml, xref_no = extract_raw_xml_from_pdf(file_path)
-            if raw_xml:
-                # Info für User!
-                result = (
-                    "❌ Keine korrekt eingebettete XML-Datei in der PDF gefunden.<br>"
-                    "🕵️‍♂️ <b>Aber:</b> Im PDF wurde eine Roh-XML im Objekt gefunden (nicht offiziell eingebettet).<br>"
-                )
-                # Option für den User: Sollen wir das PDF automatisch „reparieren“ (richtig einbetten)?
-                # Correction Proposal als Dropdown!
-                repair_dropdown = (
-                    '<form method="POST" action="/download_corrected">'
-                    '<input type="hidden" name="xml_data" value="{}">'.format(raw_xml.replace('"','&quot;'))
-                    '<input type="hidden" name="correction" value="EMBEDRAW|noembed|embed">'
-                    '<label>PDF reparieren (XML korrekt als Anhang einbetten)? '
-                    '<select name="repair_embed">'
-                    '<option value="yes" selected>Ja, reparieren</option>'
-                    '<option value="no">Nein, PDF bleibt wie sie ist</option>'
-                    '</select></label> '
-                    '<button type="submit">📥 Korrigierte PDF herunterladen</button>'
-                    '</form>'
-                )
-                result += repair_dropdown
-                return render_template("index.html", result=result, filename=filename)
-            else:
-                result = "❌ Keine XML-Datei in der PDF gefunden."
-                error_reasons = check_errorcodes(None, file_path)
-                if error_reasons:
-                    result += "<br><br><b>Fehlererkennung:</b><ul>"
-                    for reason in error_reasons:
-                        result += f"<li>{reason}</li>"
-                    result += "</ul>"
-                return render_template("index.html", result=result, filename=filename)
+            xml = extract_xml_from_pdf(file_path)
+            if not xml:
+                # Forensisch nach Roh-XML suchen!
+                raw_xml, xref_no = extract_raw_xml_from_pdf(file_path)
+                if raw_xml:
+                    # Info für User!
+                    result = (
+                        "❌ Keine korrekt eingebettete XML-Datei in der PDF gefunden.<br>"
+                        "🕵️‍♂️ <b>Aber:</b> Im PDF wurde eine Roh-XML im Objekt gefunden (nicht offiziell eingebettet).<br>"
+                    )
+                    # Option für den User: Sollen wir das PDF automatisch „reparieren“ (richtig einbetten)?
+                    # Correction Proposal als Dropdown!
+                    repair_dropdown = (
+                        '<form method="POST" action="/download_corrected">'
+                        '<input type="hidden" name="xml_data" value="{}">'.format(raw_xml.replace('"','&quot;'))
+                        '<input type="hidden" name="correction" value="EMBEDRAW|noembed|embed">'
+                        '<label>PDF reparieren (XML korrekt als Anhang einbetten)? '
+                        '<select name="repair_embed">'
+                        '<option value="yes" selected>Ja, reparieren</option>'
+                        '<option value="no">Nein, PDF bleibt wie sie ist</option>'
+                        '</select></label> '
+                        '<button type="submit">📥 Korrigierte PDF herunterladen</button>'
+                        '</form>'
+                        )
+                    result += repair_dropdown
+                    return render_template("index.html", result=result, filename=filename)
+                else:
+                    result = "❌ Keine XML-Datei in der PDF gefunden."
+                    error_reasons = check_errorcodes(None, file_path)
+                    if error_reasons:
+                        result += "<br><br><b>Fehlererkennung:</b><ul>"
+                        for reason in error_reasons:
+                            result += f"<li>{reason}</li>"
+                        result += "</ul>"
+                    return render_template("index.html", result=result, filename=filename)
 
 
         xml_standard = detect_xml_standard(xml)
