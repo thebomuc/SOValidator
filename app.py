@@ -110,10 +110,10 @@ def check_errorcodes(xml, file_path):
             except Exception:
                 pass
         if not pdfa3_hint:
-        if check_custom_xmp(file_path):
-            pass  # Kein Fehler, da Custom-XMP vorhanden!
-        else:
-            reasons.append("E0051: PDF scheint kein PDF/A-3 zu sein (Metadatenprüfung, unsicher).")
+            if check_custom_xmp(file_path):
+                pass  # Kein Fehler, da Custom-XMP vorhanden!
+            else:
+                reasons.append("E0051: PDF scheint kein PDF/A-3 zu sein (Metadatenprüfung, unsicher).")
         # 4. Embedded-XML-Filename prüfen
         if doc.embfile_count() > 0:
             emb_name = doc.embfile_info(0).get("filename", "")
@@ -159,6 +159,25 @@ def extract_xml_from_pdf(pdf_path):
         xml_bytes = doc.embfile_get(0)
         return xml_bytes.decode("utf-8", errors="replace")
     return None
+
+def extract_raw_xml_from_pdf(pdf_path):
+    """Suche im gesamten PDF nach Roh-XML-Streams (forensisch, kein offizieller Anhang)."""
+    doc = fitz.open(pdf_path)
+    for xref in range(1, doc.xref_length()):
+        try:
+            stream = doc.xref_stream(xref)
+            # Suche nach typische XML-Anfänge (vorsicht auf UTF-8 BOM etc.)
+            if stream.strip().startswith(b'<?xml') or b'<rsm:CrossIndustryInvoice' in stream[:200]:
+                try:
+                    text = stream.decode("utf-8", errors="replace")
+                except Exception:
+                    continue
+                # Nur, wenn das halbwegs wie XML aussieht:
+                if "<" in text and ">" in text and "</" in text:
+                    return text, xref
+        except Exception:
+            continue
+    return None, None
 
 def check_custom_xmp(pdf_path):
     doc = fitz.open(pdf_path)
@@ -277,37 +296,35 @@ def download_corrected():
 
     xml_raw = request.form.get("xml_data")
     corrections = request.form.getlist("correction")
+    repair_embed = request.form.get("repair_embed")
 
     corrected_xml = xml_raw
     for correction in corrections:
-        tag, old, new = correction.split("|")
-        corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
+        if "|" in correction:
+            tag, old, new = correction.split("|")
+            if tag != "EMBEDRAW":
+                corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
 
-    # Neues PDF, alle Anhänge löschen!
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
-
-    # Lösche ALLE bestehenden embedded Dateien
-    for i in reversed(range(doc.embfile_count())):
-        doc.embfile_del(i)
-
-    # XML korrekt neu einbetten
-    doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
-
+    # Nur wenn der User „Ja“ gewählt hat, wird wirklich die XML eingebettet!
+    if repair_embed == "yes":
+        if doc.embfile_count() > 0:
+            doc.embfile_del(0)
+        doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
+    else:
+        # Nichts verändern, Original speichern
+        pass
     doc.save(corrected_pdf_path)
-    doc.close()
 
-    # Prüfe (Debug): Ist jetzt 1 XML drin?
-    # test_doc = fitz.open(corrected_pdf_path)
-    # print("DEBUG: embedded files after save:", test_doc.embfile_count())
-    # test_doc.close()
-
-    orig_filename = session.get("uploaded_filename", "Rechnung.pdf")
+    orig_filename = session.get("uploaded_filename")
+    if not orig_filename:
+        orig_filename = "Rechnung"
     basename, ext = os.path.splitext(orig_filename)
     download_name = f"{basename}_corrected.pdf"
 
     return send_file(corrected_pdf_path, as_attachment=True, download_name=download_name)
-
+    
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = ""
@@ -340,10 +357,34 @@ def index():
     try:
         # XML aus PDF extrahieren oder direkt einlesen
         if is_pdf:
-            xml = extract_xml_from_pdf(file_path)
-            if not xml:
+        xml = extract_xml_from_pdf(file_path)
+        if not xml:
+            # Forensisch nach Roh-XML suchen!
+            raw_xml, xref_no = extract_raw_xml_from_pdf(file_path)
+            if raw_xml:
+                # Info für User!
+                result = (
+                    "❌ Keine korrekt eingebettete XML-Datei in der PDF gefunden.<br>"
+                    "🕵️‍♂️ <b>Aber:</b> Im PDF wurde eine Roh-XML im Objekt gefunden (nicht offiziell eingebettet).<br>"
+                )
+                # Option für den User: Sollen wir das PDF automatisch „reparieren“ (richtig einbetten)?
+                # Correction Proposal als Dropdown!
+                repair_dropdown = (
+                    '<form method="POST" action="/download_corrected">'
+                    '<input type="hidden" name="xml_data" value="{}">'.format(raw_xml.replace('"','&quot;'))
+                    '<input type="hidden" name="correction" value="EMBEDRAW|noembed|embed">'
+                    '<label>PDF reparieren (XML korrekt als Anhang einbetten)? '
+                    '<select name="repair_embed">'
+                    '<option value="yes" selected>Ja, reparieren</option>'
+                    '<option value="no">Nein, PDF bleibt wie sie ist</option>'
+                    '</select></label> '
+                    '<button type="submit">📥 Korrigierte PDF herunterladen</button>'
+                    '</form>'
+                )
+                result += repair_dropdown
+                return render_template("index.html", result=result, filename=filename)
+            else:
                 result = "❌ Keine XML-Datei in der PDF gefunden."
-                # Prüfe auf Fehlercodes trotzdem
                 error_reasons = check_errorcodes(None, file_path)
                 if error_reasons:
                     result += "<br><br><b>Fehlererkennung:</b><ul>"
@@ -351,12 +392,7 @@ def index():
                         result += f"<li>{reason}</li>"
                     result += "</ul>"
                 return render_template("index.html", result=result, filename=filename)
-        elif is_xml:
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                xml = f.read()
-        else:
-            result = "❌ Ungültiger Dateityp. Bitte nur PDF oder XML hochladen."
-            return render_template("index.html", result=result, filename=filename)
+
 
         xml_standard = detect_xml_standard(xml)
 
