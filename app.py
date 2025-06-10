@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, send_file, session
 from markupsafe import Markup
+import zipfile
 import fitz  # PyMuPDF
 import tempfile
 from lxml import etree
@@ -290,6 +291,9 @@ def detect_xml_standard(xml):
 
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
+    import io
+    import zipfile
+
     original_pdf_path = session.get("original_pdf_path")
     if not original_pdf_path or not os.path.exists(original_pdf_path):
         return "❌ Originale PDF nicht gefunden.", 400
@@ -312,9 +316,6 @@ def download_corrected():
         if doc.embfile_count() > 0:
             doc.embfile_del(0)
         doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
-    else:
-        # Nichts verändern, Original speichern
-        pass
     doc.save(corrected_pdf_path)
 
     orig_filename = session.get("uploaded_filename")
@@ -323,7 +324,19 @@ def download_corrected():
     basename, ext = os.path.splitext(orig_filename)
     download_name = f"{basename}_corrected.pdf"
 
-    return send_file(corrected_pdf_path, as_attachment=True, download_name=download_name)
+    # ---- Hier kommt das ZIP ----
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        with open(corrected_pdf_path, "rb") as f:
+            zf.writestr(download_name, f.read())
+    zip_buffer.seek(0)
+
+    return send_file(
+        zip_buffer,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"{basename}_corrected.zip"
+    )
     
 @app.route("/", methods=["GET", "POST"])
 def index():
