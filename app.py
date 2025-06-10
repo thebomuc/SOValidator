@@ -110,6 +110,9 @@ def check_errorcodes(xml, file_path):
             except Exception:
                 pass
         if not pdfa3_hint:
+        if check_custom_xmp(file_path):
+            pass  # Kein Fehler, da Custom-XMP vorhanden!
+        else:
             reasons.append("E0051: PDF scheint kein PDF/A-3 zu sein (Metadatenprüfung, unsicher).")
         # 4. Embedded-XML-Filename prüfen
         if doc.embfile_count() > 0:
@@ -156,6 +159,45 @@ def extract_xml_from_pdf(pdf_path):
         xml_bytes = doc.embfile_get(0)
         return xml_bytes.decode("utf-8", errors="replace")
     return None
+
+def check_custom_xmp(pdf_path):
+    doc = fitz.open(pdf_path)
+    xmp = doc.metadata.get("xmp")
+    if not xmp:
+        try:
+            xmp = doc.xmp_metadata
+        except Exception:
+            xmp = None
+    if not xmp:
+        return False  # Kein XMP, Bedingung nicht erfüllt
+
+    ns_list = [
+        "urn:ferd:pdfa:CrossIndustryDocument:invoice:1p0#",
+        "urn:zugferd:pdfa:CrossIndustryDocument:invoice:2p0#",
+        "urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#",
+        "urn:factur-x:pdfa:CrossIndustryDocument:1p0#",
+    ]
+    required_fields = [
+        "DocumentType", "DocumentFileName", "Version", "ConformanceLevel"
+    ]
+    try:
+        root = etree.fromstring(xmp.encode("utf-8"))
+    except Exception:
+        return False
+
+    # Suche alle rdf:Description mit gewünschtem Namespace
+    found = False
+    for desc in root.findall(".//{*}Description"):
+        about = desc.attrib.get("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about", "")
+        if any(ns in about for ns in ns_list):
+            # Prüfe auf mindestens eines der geforderten Felder
+            for field in required_fields:
+                if field in desc.attrib or desc.find(f".//{{*}}{field}") is not None:
+                    found = True
+                    break
+        if found:
+            break
+    return found
 
 def validate_xml(xml):
     parser = etree.XMLParser(recover=True)
