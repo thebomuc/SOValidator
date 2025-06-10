@@ -370,17 +370,17 @@ def index():
                     # Option für den User: Sollen wir das PDF automatisch „reparieren“ (richtig einbetten)?
                     # Correction Proposal als Dropdown!
                     repair_dropdown = (
-                        '<form method="POST" action="/download_corrected">'
-                        '<input type="hidden" name="xml_data" value="{}">'.format(raw_xml.replace('"','&quot;'))
-                        '<input type="hidden" name="correction" value="EMBEDRAW|noembed|embed">'
-                        '<label>PDF reparieren (XML korrekt als Anhang einbetten)? '
-                        '<select name="repair_embed">'
-                        '<option value="yes" selected>Ja, reparieren</option>'
-                        '<option value="no">Nein, PDF bleibt wie sie ist</option>'
-                        '</select></label> '
-                        '<button type="submit">📥 Korrigierte PDF herunterladen</button>'
-                        '</form>'
-                        )
+                        f'<form method="POST" action="/download_corrected">'
+                        f'<input type="hidden" name="xml_data" value="{raw_xml.replace(\'"\', "&quot;")}">'
+                        f'<input type="hidden" name="correction" value="EMBEDRAW|noembed|embed">'
+                        f'<label>PDF reparieren (XML korrekt als Anhang einbetten)? '
+                        f'<select name="repair_embed">'
+                        f'<option value="yes" selected>Ja, reparieren</option>'
+                        f'<option value="no">Nein, PDF bleibt wie sie ist</option>'
+                        f'</select></label> '
+                        f'<button type="submit">📥 Korrigierte PDF herunterladen</button>'
+                        f'</form>'
+                    )
                     result += repair_dropdown
                     return render_template("index.html", result=result, filename=filename)
                 else:
