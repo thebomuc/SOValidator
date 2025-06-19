@@ -76,6 +76,13 @@ for sheet, column in codelists.items():
     except Exception:
         code_sets[sheet] = set()
 
+def b64encode(value):
+    if isinstance(value, str):
+        value = value.encode("utf-8")
+    return base64.b64encode(value).decode("ascii")
+
+app.jinja_env.filters['b64encode'] = b64encode
+
 def check_errorcodes(xml, file_path):
     reasons = []
     allowed_xml_names = [
@@ -298,16 +305,24 @@ def download_corrected():
     if not original_pdf_path or not os.path.exists(original_pdf_path):
         return "❌ Originale PDF nicht gefunden.", 400
 
-    xml_raw = request.form.get("xml_data")
+    # XMLs aus Base64 holen
+    xml_b64 = request.form.get("xml_data_b64")
+    orig_xml_b64 = request.form.get("orig_xml_data_b64")
+    if not xml_b64 or not orig_xml_b64:
+        return "❌ XML fehlt.", 400
+    corrected_xml = base64.b64decode(xml_b64).decode("utf-8")
+    original_xml = base64.b64decode(orig_xml_b64).decode("utf-8")
+
     corrections = request.form.getlist("correction")
     repair_embed = request.form.get("repair_embed")
 
-    corrected_xml = xml_raw
-    for correction in corrections:
-        if "|" in correction:
-            tag, old, new = correction.split("|")
-            if tag != "EMBEDRAW":
-                corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
+    # (Optional: Du könntest nur Korrekturen auf corrected_xml anwenden, 
+    # aber da das vorher schon passiert ist, hier ggf. redundant)
+    # for correction in corrections:
+    #     if "|" in correction:
+    #         tag, old, new = correction.split("|")
+    #         if tag != "EMBEDRAW":
+    #             corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
 
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
@@ -322,13 +337,17 @@ def download_corrected():
     if not orig_filename:
         orig_filename = "Rechnung"
     basename, ext = os.path.splitext(orig_filename)
-    download_name = f"{basename}_corrected.pdf"
+    pdf_name = f"{basename}_corrected.pdf"
+    xml_name = f"{basename}_corrected.xml"
+    orig_xml_name = f"{basename}_original.xml"
 
-    # ---- Hier kommt das ZIP ----
+    # ---- ZIP-Download ----
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         with open(corrected_pdf_path, "rb") as f:
-            zf.writestr(download_name, f.read())
+            zf.writestr(pdf_name, f.read())
+        zf.writestr(xml_name, corrected_xml.encode("utf-8"))
+        zf.writestr(orig_xml_name, original_xml.encode("utf-8"))
     zip_buffer.seek(0)
 
     return send_file(
