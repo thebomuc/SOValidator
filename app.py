@@ -35,12 +35,14 @@ def replace_at_positions(xml, corrections):
         if len(parts) == 4:
             label, start, end, new_value = parts
             start, end = int(start), int(end)
+            print(f"Korrektur: {label} {start}:{end} → '{xml[start:end]}' → '{new_value}'")
             corr_list.append((start, end, new_value))
     # Sortieren: von hinten nach vorne!
     corr_list.sort(reverse=True, key=lambda x: x[0])
     xml = list(xml)
-    
+
     for start, end, new_value in corr_list:
+        print(f"Position {start}:{end} → '{''.join(xml[start:end])}'")
         print(f"Ersetze [{start}:{end}] '{''.join(xml[start:end])}' → '{new_value}'")
         xml[start:end] = new_value
     return "".join(xml)
