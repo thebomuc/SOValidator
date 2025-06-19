@@ -76,17 +76,16 @@
         <span style="color:#006699;"><b>📄 Erkannter Standard:</b> {{ xml_standard }}</span>
       </div>
     {% endif %}
-    {% if original_xml %}
+    {% if codelist_table %}
       <form method="POST" action="/download_corrected" style="margin-top:1em;">
+        <!-- Korrigierte und Original-XML als Base64! -->
         <input type="hidden" name="xml_data_b64" value="{{ original_xml|b64encode }}">
         <input type="hidden" name="orig_xml_data_b64" value="{{ original_xml|b64encode }}">
-        {% if codelist_table %}
-          {% for row in codelist_table %}
-            {% if row.correction_value %}
-              <input type="hidden" name="correction" value="{{ row.correction_value }}">
-            {% endif %}
-          {% endfor %}
-        {% endif %}
+        {% for row in codelist_table %}
+          {% if row.correction_value %}
+            <input type="hidden" name="correction" value="{{ row.correction_value }}">
+          {% endif %}
+        {% endfor %}
         {% if repair_embed %}
           <input type="hidden" name="repair_embed" value="{{ repair_embed }}">
         {% endif %}
@@ -95,6 +94,7 @@
     {% endif %}
   </div>
 {% endif %}
+</div>
 
     {% if codelist_table %}
     <div class="box">
