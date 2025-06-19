@@ -414,8 +414,9 @@ def download_corrected():
             print(doc.embfile_info(i))
         if doc.embfile_count() > 0:
             doc.embfile_del(0)
-        print("---Korrigiertes XML VOR dem Einbetten ins PDF---")
+        print("-------- XML, das jetzt wirklich eingebettet wird --------")
         print(corrected_xml)
+        print("-------- ENDE --------")
         doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
         print("PDF Embedded Files (nachher):", doc.embfile_count())
         for i in range(doc.embfile_count()):
@@ -424,6 +425,8 @@ def download_corrected():
     doc.save(corrected_pdf_path)
     print(">>> PDF Embedded Files (nachher):")
     with fitz.open(corrected_pdf_path) as check_doc:
+        xml_bytes = check_doc.embfile_get(0)
+        print("MD5 von embedded XML:", hashlib.md5(xml_bytes).hexdigest())
         embedded_count = check_doc.embfile_count()
         print("Embedded count:", embedded_count)
         for i in range(embedded_count):
