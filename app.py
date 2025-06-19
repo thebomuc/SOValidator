@@ -82,7 +82,6 @@ def b64encode(value):
         value = value.encode("utf-8")
     return base64.b64encode(value).decode("ascii")
 
-app.jinja_env.filters['b64encode'] = b64encode
 
 def check_errorcodes(xml, file_path):
     reasons = []
@@ -297,6 +296,12 @@ def detect_xml_standard(xml):
         return "PEPPOL UBL"
     return "Unbekannt"
 
+@app.template_filter('b64encode')
+def b64encode_filter(s):
+    if isinstance(s, str):
+        s = s.encode("utf-8")
+    return base64.b64encode(s).decode("ascii")
+
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
     import io
@@ -311,23 +316,18 @@ def download_corrected():
     orig_xml_b64 = request.form.get("orig_xml_data_b64")
     if not xml_b64 or not orig_xml_b64:
         return "❌ XML fehlt.", 400
+
+    # HTML-Entities entschärfen (für <, >, & usw.), falls nötig
+    xml_b64 = html.unescape(xml_b64)
+    orig_xml_b64 = html.unescape(orig_xml_b64)
     corrected_xml = base64.b64decode(xml_b64).decode("utf-8")
     original_xml = base64.b64decode(orig_xml_b64).decode("utf-8")
 
     corrections = request.form.getlist("correction")
     repair_embed = request.form.get("repair_embed")
 
-    # (Optional: Du könntest nur Korrekturen auf corrected_xml anwenden, 
-    # aber da das vorher schon passiert ist, hier ggf. redundant)
-    # for correction in corrections:
-    #     if "|" in correction:
-    #         tag, old, new = correction.split("|")
-    #         if tag != "EMBEDRAW":
-    #             corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
-
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
-    # Nur wenn der User „Ja“ gewählt hat, wird wirklich die XML eingebettet!
     if repair_embed == "yes":
         if doc.embfile_count() > 0:
             doc.embfile_del(0)
@@ -342,7 +342,6 @@ def download_corrected():
     xml_name = f"{basename}_corrected.xml"
     orig_xml_name = f"{basename}_original.xml"
 
-    # ---- ZIP-Download ----
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         with open(corrected_pdf_path, "rb") as f:
