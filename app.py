@@ -27,23 +27,29 @@ def xml_escape_values(xml):
     # Nur Inhalte escapen, nicht Tags!
     return re.sub(r'>([^<]+)<', escape_match, xml)
 
-def replace_nth(text, sub, repl, n):
+import re
+
+def replace_nth_tag_value(xml, tag, old, new, n):
     """
-    Ersetzt das n-te (1-basiert) exakte Vorkommen von 'sub' in 'text' durch 'repl'.
-    Gibt vor und nach dem Ersetzen die betroffene Stelle aus (für Logging/Debug).
+    Ersetzt das n-te Auftreten eines bestimmten Tag-Werts im XML.
     """
-    find = -1
-    for i in range(n):
-        find = text.find(sub, find + 1)
-        if find == -1:
-            print(f"WARN: {n}. Vorkommen von '{sub}' nicht gefunden!")
-            return text  # n-tes Vorkommen nicht gefunden
-    before = text[max(0, find-50):find+50]
-    print(f"Vor Ersetzung #{n}: {before}")
-    replaced = text[:find] + repl + text[find + len(sub):]
-    after = replaced[max(0, find-50):find+50]
-    print(f"Nach Ersetzung #{n}: {after}")
-    return replaced
+    # Pattern für das Tag, z.B. <ram:CategoryCode>s</ram:CategoryCode>
+    pattern = fr'(<{tag}>)({re.escape(old)})(</{tag}>)'
+    count = 0
+
+    def replacer(match):
+        nonlocal count
+        count += 1
+        if count == n:
+            print(f"Ersetze das {n}. <{tag}>{old}</{tag}> -> <{tag}>{new}</{tag}>")
+            return f"<{tag}>{new}</{tag}>"
+        else:
+            return match.group(0)
+
+    new_xml, num_subs = re.subn(pattern, replacer, xml)
+    if count < n:
+        print(f"WARN: {n}. Vorkommen von <{tag}>{old}</{tag}> nicht gefunden!")
+    return new_xml
 
 # Dynamischer Pfad für PyInstaller (sys._MEIPASS) für statische Ressourcen und Templates
 if hasattr(sys, '_MEIPASS'):
@@ -374,12 +380,13 @@ def download_corrected():
             tag, old, new, idx = parts
             idx = int(idx)
             if tag != "EMBEDRAW":
-                corrected_xml = replace_nth(corrected_xml, f">{old}<", f">{new}<", idx)
+                xml_tag = 'ram:CategoryCode' if tag == '5305' else tag
+                corrected_xml = replace_nth_tag_value(corrected_xml, xml_tag, old, new, idx)
         elif len(parts) == 3:
             tag, old, new = parts
             if tag != "EMBEDRAW":
-                corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
-
+                xml_tag = 'ram:CategoryCode' if tag == '5305' else tag
+                corrected_xml = corrected_xml.replace(f"<{xml_tag}>{old}</{xml_tag}>", f"<{xml_tag}>{new}</{xml_tag}>")
 
     print("XML nach Korrektur:", corrected_xml[:1000])
 
