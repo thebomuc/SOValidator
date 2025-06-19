@@ -344,6 +344,9 @@ def download_corrected():
     corrections = request.form.getlist("correction")
     repair_embed = request.form.get("repair_embed")
 
+    print("Korrekturen empfangen:", corrections)
+    print("XML vorher:", xml_raw[:1000])  # nur die ersten 1000 Zeichen
+
     # 1. Korrekturen anwenden
     corrected_xml = xml_raw
     for correction in corrections:
@@ -352,6 +355,8 @@ def download_corrected():
             if tag != "EMBEDRAW":
                 # Unescaped Werte ersetzen!
                 corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
+
+    print("XML nach Korrektur:", corrected_xml[:1000])
 
     # 2. Dann escapen
     corrected_xml = xml_escape_values(corrected_xml)
