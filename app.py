@@ -594,21 +594,20 @@ def index():
                             dropdown_html = f'<label>→ Möglicherweise meinten Sie: '
                             dropdown_html += f'<select name="correction">'
                             for option in sorted_options:
-                                # Standard: closest_match wie gehabt
                                 selected = 'selected' if closest_match and option == closest_match[0] else ''
-                                # Für Country: Wenn leer, "DE" vorauswählen
-                                if label == "Country" and old_value == "__LEER__" and option == "DE":
-                                    selected = 'selected'
-                                dropdown_html += f'<option value="{label}|{old_value}|{option}" {selected}>{option}</option>'
+                                dropdown_html += (
+                                    f'<option value="{label}|{start}|{end}|{option}" {selected}>{option}</option>'
+                                )
                             dropdown_html += '</select></label>'
 
                         suggestion = Markup(dropdown_html)
                         codelist_table.append({
                             "label": label,
                             "value": value,
-                            "suggestion": suggestion,
+                            "suggestion": suggestion,  # wird im Template ge-„safed“
                             "line": line_number,
                             "column": column_number,
+                            # entscheidend: start & end-Position des zu ersetzenden Inhalts!
                             "correction_value": f"{label}|{start}|{end}|{closest_match[0] if closest_match else ''}"
                         })
         codelist_table.sort(key=lambda x: (x["line"], x["column"]))
