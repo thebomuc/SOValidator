@@ -349,9 +349,10 @@ def download_corrected():
     if not original_pdf_path or not os.path.exists(original_pdf_path):
         return "❌ Originale PDF nicht gefunden.", 400
 
-    xml_raw = request.form.get("xml_data")
-    #corrections = request.form.getlist("correction")
     corrections = request.form.getlist("correction")
+    if len(corrections) == 1 and "," in corrections[0]:
+        corrections = corrections[0].split(",")
+        #corrections = corrections[0].split(",")
     corrected_xml = xml_raw
     for correction in corrections:
         if "|" in correction:
