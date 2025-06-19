@@ -406,6 +406,8 @@ def download_corrected():
     if repair_embed == "yes":
         if doc.embfile_count() > 0:
             doc.embfile_del(0)
+        print("---Korrigiertes XML VOR dem Einbetten ins PDF---")
+        print(corrected_xml)
         doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
     doc.save(corrected_pdf_path)
 
