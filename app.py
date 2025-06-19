@@ -361,11 +361,6 @@ def download_corrected():
                 idx = int(idx)
                 if tag != "EMBEDRAW":
                     corrected_xml = replace_nth(corrected_xml, f">{old}<", f">{new}<", idx)
-            else:
-                tag, old, new = parts
-                if tag != "EMBEDRAW":
-                    corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
-
     
     repair_embed = request.form.get("repair_embed")
 
