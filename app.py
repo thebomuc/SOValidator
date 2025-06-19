@@ -375,19 +375,19 @@ def download_corrected():
     print("Korrekturen empfangen:", corrections)
     print("XML vorher:", corrected_xml[:1000])
 
-for correction in corrections:
-    parts = correction.split("|")
-    if len(parts) == 4:
-        tag, old, new, idx = parts
-        idx = int(idx)
-        if tag != "EMBEDRAW":
-            xml_tag = 'ram:CategoryCode' if tag == '5305' else tag  # ggf. Mapping!
-            corrected_xml = replace_nth_tag_value(corrected_xml, xml_tag, old, new, idx)
-    elif len(parts) == 3:
-        tag, old, new = parts
-        if tag != "EMBEDRAW":
-            xml_tag = 'ram:CategoryCode' if tag == '5305' else tag
-            corrected_xml = corrected_xml.replace(f"<{xml_tag}>{old}</{xml_tag}>", f"<{xml_tag}>{new}</{xml_tag}>")
+    for correction in corrections:
+        parts = correction.split("|")
+        if len(parts) == 4:
+            tag, old, new, idx = parts
+            idx = int(idx)
+            if tag != "EMBEDRAW":
+                xml_tag = 'ram:CategoryCode' if tag == '5305' else tag  # ggf. Mapping!
+                corrected_xml = replace_nth_tag_value(corrected_xml, xml_tag, old, new, idx)
+        elif len(parts) == 3:
+            tag, old, new = parts
+            if tag != "EMBEDRAW":
+                xml_tag = 'ram:CategoryCode' if tag == '5305' else tag
+                corrected_xml = corrected_xml.replace(f"<{xml_tag}>{old}</{xml_tag}>", f"<{xml_tag}>{new}</{xml_tag}>")
 
     print("XML nach Korrektur:", corrected_xml[:1000])
 
