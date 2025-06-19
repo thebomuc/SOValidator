@@ -28,13 +28,22 @@ def xml_escape_values(xml):
     return re.sub(r'>([^<]+)<', escape_match, xml)
 
 def replace_nth(text, sub, repl, n):
-    """Ersetzt das n-te Vorkommen von sub in text durch repl."""
+    """
+    Ersetzt das n-te (1-basiert) exakte Vorkommen von 'sub' in 'text' durch 'repl'.
+    Gibt vor und nach dem Ersetzen die betroffene Stelle aus (für Logging/Debug).
+    """
     find = -1
-    for _ in range(n):
+    for i in range(n):
         find = text.find(sub, find + 1)
         if find == -1:
+            print(f"WARN: {n}. Vorkommen von '{sub}' nicht gefunden!")
             return text  # n-tes Vorkommen nicht gefunden
-    return text[:find] + repl + text[find + len(sub):]
+    before = text[max(0, find-50):find+50]
+    print(f"Vor Ersetzung #{n}: {before}")
+    replaced = text[:find] + repl + text[find + len(sub):]
+    after = replaced[max(0, find-50):find+50]
+    print(f"Nach Ersetzung #{n}: {after}")
+    return replaced
 
 # Dynamischer Pfad für PyInstaller (sys._MEIPASS) für statische Ressourcen und Templates
 if hasattr(sys, '_MEIPASS'):
@@ -365,15 +374,12 @@ def download_corrected():
             tag, old, new, idx = parts
             idx = int(idx)
             if tag != "EMBEDRAW":
-                before = corrected_xml[max(0, corrected_xml.find(f">{old}<")-50):corrected_xml.find(f">{old}<")+50]
-                print(f"Ersetze das {idx}. >{old}< -> >{new}< (vorher: {before})")
                 corrected_xml = replace_nth(corrected_xml, f">{old}<", f">{new}<", idx)
-                after = corrected_xml[max(0, corrected_xml.find(f">{new}<")-50):corrected_xml.find(f">{new}<")+50]
-                print(f"nachher: {after}")
         elif len(parts) == 3:
             tag, old, new = parts
             if tag != "EMBEDRAW":
                 corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
+
 
     print("XML nach Korrektur:", corrected_xml[:1000])
 
