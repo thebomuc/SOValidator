@@ -9,6 +9,7 @@ import re
 import pandas as pd
 from difflib import get_close_matches
 import sys
+import base64
 
 # Dynamischer Pfad für PyInstaller (sys._MEIPASS) für statische Ressourcen und Templates
 if hasattr(sys, '_MEIPASS'):
