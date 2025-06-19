@@ -9,8 +9,6 @@ import re
 import pandas as pd
 from difflib import get_close_matches
 import sys
-import base64
-import html
 
 # Dynamischer Pfad für PyInstaller (sys._MEIPASS) für statische Ressourcen und Templates
 if hasattr(sys, '_MEIPASS'):
@@ -77,12 +75,6 @@ for sheet, column in codelists.items():
         code_sets[sheet] = set(values)
     except Exception:
         code_sets[sheet] = set()
-
-def b64encode(value):
-    if isinstance(value, str):
-        value = value.encode("utf-8")
-    return base64.b64encode(value).decode("ascii")
-
 
 def check_errorcodes(xml, file_path):
     reasons = []
@@ -297,12 +289,6 @@ def detect_xml_standard(xml):
         return "PEPPOL UBL"
     return "Unbekannt"
 
-@app.template_filter('b64encode')
-def b64encode_filter(s):
-    if isinstance(s, str):
-        s = s.encode("utf-8")
-    return base64.b64encode(s).decode("ascii")
-
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
     import io
@@ -312,26 +298,20 @@ def download_corrected():
     if not original_pdf_path or not os.path.exists(original_pdf_path):
         return "❌ Originale PDF nicht gefunden.", 400
 
-    # XMLs aus Base64 holen
-    xml_b64 = request.form.get("xml_data_b64")
-    orig_xml_b64 = request.form.get("orig_xml_data_b64")
-    if not xml_b64 or not orig_xml_b64:
-        print("DEBUG: Download-POST kam ohne XML!")
-        print("xml_data_b64:", xml_b64)
-        print("orig_xml_data_b64:", orig_xml_b64)
-        return "❌ XML fehlt.", 400
-
-    # HTML-Entities entschärfen (für <, >, & usw.), falls nötig
-    xml_b64 = html.unescape(xml_b64)
-    orig_xml_b64 = html.unescape(orig_xml_b64)
-    corrected_xml = base64.b64decode(xml_b64).decode("utf-8")
-    original_xml = base64.b64decode(orig_xml_b64).decode("utf-8")
-
+    xml_raw = request.form.get("xml_data")
     corrections = request.form.getlist("correction")
     repair_embed = request.form.get("repair_embed")
 
+    corrected_xml = xml_raw
+    for correction in corrections:
+        if "|" in correction:
+            tag, old, new = correction.split("|")
+            if tag != "EMBEDRAW":
+                corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
+
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
+    # Nur wenn der User „Ja“ gewählt hat, wird wirklich die XML eingebettet!
     if repair_embed == "yes":
         if doc.embfile_count() > 0:
             doc.embfile_del(0)
@@ -342,16 +322,13 @@ def download_corrected():
     if not orig_filename:
         orig_filename = "Rechnung"
     basename, ext = os.path.splitext(orig_filename)
-    pdf_name = f"{basename}_corrected.pdf"
-    xml_name = f"{basename}_corrected.xml"
-    orig_xml_name = f"{basename}_original.xml"
+    download_name = f"{basename}_corrected.pdf"
 
+    # ---- Hier kommt das ZIP ----
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         with open(corrected_pdf_path, "rb") as f:
-            zf.writestr(pdf_name, f.read())
-        zf.writestr(xml_name, corrected_xml.encode("utf-8"))
-        zf.writestr(orig_xml_name, original_xml.encode("utf-8"))
+            zf.writestr(download_name, f.read())
     zip_buffer.seek(0)
 
     return send_file(
