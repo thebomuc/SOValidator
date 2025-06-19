@@ -354,6 +354,8 @@ def download_corrected():
     corrections = sum([c.split(",") for c in request.form.getlist("correction")], [])
     corrected_xml = xml_raw
 
+    repair_embed = request.form.get("repair_embed")  # <- HIER!
+
     print("Korrekturen empfangen:", corrections)
     print("XML vorher:", corrected_xml[:1000])
 
