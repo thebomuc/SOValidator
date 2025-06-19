@@ -78,18 +78,13 @@
     {% endif %}
     {% if codelist_table %}
       <form method="POST" action="/download_corrected" style="margin-top:1em;">
-        <!-- Korrigierte und Original-XML als Base64! -->
-        <input type="hidden" name="xml_data_b64" value="{{ original_xml|b64encode }}">
-        <input type="hidden" name="orig_xml_data_b64" value="{{ original_xml|b64encode }}">
+        <textarea name="xml_data" style="display:none;">{{ original_xml|default('')|e }}</textarea>
         {% for row in codelist_table %}
           {% if row.correction_value %}
             <input type="hidden" name="correction" value="{{ row.correction_value }}">
           {% endif %}
         {% endfor %}
-        {% if repair_embed %}
-          <input type="hidden" name="repair_embed" value="{{ repair_embed }}">
-        {% endif %}
-        <button type="submit" style="white-space:nowrap;">📥 Korrigierte PDF als ZIP herunterladen</button>
+        <button type="submit" style="white-space:nowrap;">📥 Korrigierte PDF herunterladen (Korrekturvorschläge werden übernommen.)</button>
       </form>
     {% endif %}
   </div>
