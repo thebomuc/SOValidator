@@ -349,36 +349,29 @@ def download_corrected():
     if not original_pdf_path or not os.path.exists(original_pdf_path):
         return "❌ Originale PDF nicht gefunden.", 400
 
-    xml_raw = request.form.get("xml_data")  # Das muss als erstes kommen!
+    xml_raw = request.form.get("xml_data")
+    # ACHTUNG: Das ist die "Korrektur"-Liste, jetzt mit n-tes Vorkommen!
     corrections = sum([c.split(",") for c in request.form.getlist("correction")], [])
     corrected_xml = xml_raw
-    for correction in corrections:
-        if "|" in correction:
-            parts = correction.split("|")
-            if len(parts) == 4:
-                tag, old, new, idx = parts
-                idx = int(idx)
-                if tag != "EMBEDRAW":
-                    corrected_xml = replace_nth(corrected_xml, f">{old}<", f">{new}<", idx)
-    
-    repair_embed = request.form.get("repair_embed")
 
     print("Korrekturen empfangen:", corrections)
-    print("XML vorher:", xml_raw[:1000])  # nur die ersten 1000 Zeichen
-    print("XML nach Korrektur:", corrected_xml[:1000])
+    print("XML vorher:", corrected_xml[:1000])
 
-    # 1. Korrekturen anwenden
-    corrected_xml = xml_raw
     for correction in corrections:
-        if "|" in correction:
-            parts = correction.split("|")
-            if len(parts) == 4:
-                tag, old, new, n = parts
-                n = int(n)
-                corrected_xml = replace_nth(corrected_xml, f">{old}<", f">{new}<", n)
-            elif len(parts) == 3:
-                tag, old, new = parts
-                corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")  # fallback
+        parts = correction.split("|")
+        if len(parts) == 4:
+            tag, old, new, idx = parts
+            idx = int(idx)
+            if tag != "EMBEDRAW":
+                before = corrected_xml[max(0, corrected_xml.find(f">{old}<")-50):corrected_xml.find(f">{old}<")+50]
+                print(f"Ersetze das {idx}. >{old}< -> >{new}< (vorher: {before})")
+                corrected_xml = replace_nth(corrected_xml, f">{old}<", f">{new}<", idx)
+                after = corrected_xml[max(0, corrected_xml.find(f">{new}<")-50):corrected_xml.find(f">{new}<")+50]
+                print(f"nachher: {after}")
+        elif len(parts) == 3:
+            tag, old, new = parts
+            if tag != "EMBEDRAW":
+                corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
 
     print("XML nach Korrektur:", corrected_xml[:1000])
 
@@ -605,4 +598,5 @@ if __name__ == "__main__":
     if hasattr(sys, '_MEIPASS'):
         app.run(debug=True, host="127.0.0.1", port=5000)
     else:
-        app.run(debug=True, host="0.0.0.0", port=5000)
+        port = int(os.environ.get("PORT", 10000))  # Default to 10000 if PORT not set
+        app.run(host="0.0.0.0", port=port)
