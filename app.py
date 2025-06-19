@@ -27,6 +27,15 @@ def xml_escape_values(xml):
     # Nur Inhalte escapen, nicht Tags!
     return re.sub(r'>([^<]+)<', escape_match, xml)
 
+def replace_nth(text, sub, repl, n):
+    """Ersetzt das n-te Vorkommen von sub in text durch repl."""
+    find = -1
+    for _ in range(n):
+        find = text.find(sub, find + 1)
+        if find == -1:
+            return text  # n-tes Vorkommen nicht gefunden
+    return text[:find] + repl + text[find + len(sub):]
+
 # Dynamischer Pfad für PyInstaller (sys._MEIPASS) für statische Ressourcen und Templates
 if hasattr(sys, '_MEIPASS'):
     base_path = sys._MEIPASS
@@ -341,20 +350,41 @@ def download_corrected():
         return "❌ Originale PDF nicht gefunden.", 400
 
     xml_raw = request.form.get("xml_data")
+    #corrections = request.form.getlist("correction")
     corrections = request.form.getlist("correction")
+    corrected_xml = xml_raw
+    for correction in corrections:
+        if "|" in correction:
+            parts = correction.split("|")
+            if len(parts) == 4:
+                tag, old, new, idx = parts
+                idx = int(idx)
+                if tag != "EMBEDRAW":
+                    corrected_xml = replace_nth(corrected_xml, f">{old}<", f">{new}<", idx)
+            else:
+                tag, old, new = parts
+                if tag != "EMBEDRAW":
+                    corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
+
+    
     repair_embed = request.form.get("repair_embed")
 
     print("Korrekturen empfangen:", corrections)
     print("XML vorher:", xml_raw[:1000])  # nur die ersten 1000 Zeichen
+    print("XML nach Korrektur:", corrected_xml[:1000])
 
     # 1. Korrekturen anwenden
     corrected_xml = xml_raw
     for correction in corrections:
         if "|" in correction:
-            tag, old, new = correction.split("|")
-            if tag != "EMBEDRAW":
-                # Unescaped Werte ersetzen!
-                corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
+            parts = correction.split("|")
+            if len(parts) == 4:
+                tag, old, new, n = parts
+                n = int(n)
+                corrected_xml = replace_nth(corrected_xml, f">{old}<", f">{new}<", n)
+            elif len(parts) == 3:
+                tag, old, new = parts
+                corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")  # fallback
 
     print("XML nach Korrektur:", corrected_xml[:1000])
 
@@ -491,19 +521,16 @@ def index():
         }
         for label, patterns in element_context_mapping.items():
             allowed_set = code_sets.get(label, set())
+            value_counter = {}  # Neu: Zähler für jedes Value
             for pattern in patterns:
                 regex = re.compile(pattern)
                 for match in regex.finditer(xml):
                     value = match.group(1).strip() if match.lastindex and match.group(1) else ""
+                    # Zähler hochzählen
+                    count = value_counter.get(value, 0) + 1
+                    value_counter[value] = count
+
                     if value == "" or value not in allowed_set:
-        #for label, patterns in element_context_mapping.items():
-        #    allowed_set = code_sets.get(label, set())
-        #    for pattern in patterns:
-        #        regex = re.compile(pattern)
-        #        for match in regex.finditer(xml):
-        #            raw = match.group(1) if match.lastindex else ""
-        #            value = raw.strip() if raw else ""
-        #            if value == "" or value not in allowed_set:
                         start = match.start(1) if match.lastindex else match.start()
                         line_number = xml.count("\n", 0, start) + 1
                         offset = start - sum(len(l) + 1 for l in xml_lines[:line_number - 1])
@@ -550,7 +577,7 @@ def index():
                             "suggestion": suggestion,
                             "line": line_number,
                             "column": column_number,
-                            "correction_value": f"{label}|{value if value else '__LEER__'}|{closest_match[0] if closest_match else ''}"
+                            "correction_value": f"{label}|{value if value else '__LEER__'}|{closest_match[0] if closest_match else ''}|{count}"
                         })
         codelist_table.sort(key=lambda x: (x["line"], x["column"]))
 
