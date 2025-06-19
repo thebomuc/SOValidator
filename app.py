@@ -407,11 +407,18 @@ def download_corrected():
         print(doc.embfile_info(i))
     repair_embed = request.form.get("repair_embed")
     if repair_embed == "yes":
+        print("PDF Embedded Files (vorher):", doc.embfile_count())
+        for i in range(doc.embfile_count()):
+            print(doc.embfile_info(i))
         if doc.embfile_count() > 0:
             doc.embfile_del(0)
         print("---Korrigiertes XML VOR dem Einbetten ins PDF---")
         print(corrected_xml)
         doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
+        print("PDF Embedded Files (nachher):", doc.embfile_count())
+        for i in range(doc.embfile_count()):
+            print(doc.embfile_info(i))
+
     doc.save(corrected_pdf_path)
 
     orig_filename = session.get("uploaded_filename")
