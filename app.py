@@ -402,6 +402,9 @@ def download_corrected():
 
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
+    print("PDF Embedded Files (vorher):", doc.embfile_count())
+    for i in range(doc.embfile_count()):
+        print(doc.embfile_info(i))
     repair_embed = request.form.get("repair_embed")
     if repair_embed == "yes":
         if doc.embfile_count() > 0:
