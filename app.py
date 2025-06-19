@@ -31,13 +31,18 @@ import re
 
 def replace_nth_tag_value(xml, tag, old, new, n):
     """
-    Ersetzt das n-te Auftreten eines bestimmten Tag-Werts im XML.
+    Ersetzt das n-te Vorkommen von <tag>old</tag> durch <tag>new</tag>
     """
     pattern = fr'(<{tag}>)({re.escape(old)})(</{tag}>)'
     matches = list(re.finditer(pattern, xml))
     if len(matches) < n:
         print(f"WARN: {n}. Vorkommen von <{tag}>{old}</{tag}> nicht gefunden!")
         return xml
+    m = matches[n-1]
+    start, end = m.start(2), m.end(2)
+    xml_new = xml[:start] + new + xml[end:]
+    print(f"Ersetze das {n}. <{tag}>{old}</{tag}> zu <{tag}>{new}</{tag}>")
+    return xml_new
 
     # Index des n-ten Vorkommens
     match = matches[n-1]
@@ -381,13 +386,14 @@ def download_corrected():
             tag, old, new, idx = parts
             idx = int(idx)
             if tag != "EMBEDRAW":
-                xml_tag = 'ram:CategoryCode' if tag == '5305' else tag  # ggf. Mapping!
-                corrected_xml = replace_nth_tag_value(corrected_xml, xml_tag, old, new, idx)
+                # Bsp: tag = "ram:CategoryCode"
+                corrected_xml = replace_nth_tag_value(
+                    corrected_xml, tag, old, new, idx
+                )
         elif len(parts) == 3:
             tag, old, new = parts
             if tag != "EMBEDRAW":
-                xml_tag = 'ram:CategoryCode' if tag == '5305' else tag
-                corrected_xml = corrected_xml.replace(f"<{xml_tag}>{old}</{xml_tag}>", f"<{xml_tag}>{new}</{xml_tag}>")
+                corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
 
     print("XML nach Korrektur:", corrected_xml[:1000])
 
