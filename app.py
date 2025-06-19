@@ -10,6 +10,22 @@ import pandas as pd
 from difflib import get_close_matches
 import sys
 import xml.etree.ElementTree as ET
+import re
+
+def xml_escape_values(xml):
+    """
+    Ersetzt in allen XML-Elementwerten die Zeichen &, <, >, ", ' durch die korrekten Entities.
+    """
+    def escape_match(match):
+        value = match.group(1)
+        value = (value.replace('&', '&amp;')
+                      .replace('<', '&lt;')
+                      .replace('>', '&gt;')
+                      .replace('"', '&quot;')
+                      .replace("'", '&apos;'))
+        return f">{value}<"
+    # Nur Inhalte escapen, nicht Tags!
+    return re.sub(r'>([^<]+)<', escape_match, xml)
 
 # Dynamischer Pfad für PyInstaller (sys._MEIPASS) für statische Ressourcen und Templates
 if hasattr(sys, '_MEIPASS'):
