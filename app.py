@@ -316,6 +316,9 @@ def download_corrected():
     xml_b64 = request.form.get("xml_data_b64")
     orig_xml_b64 = request.form.get("orig_xml_data_b64")
     if not xml_b64 or not orig_xml_b64:
+        print("DEBUG: Download-POST kam ohne XML!")
+        print("xml_data_b64:", xml_b64)
+        print("orig_xml_data_b64:", orig_xml_b64)
         return "❌ XML fehlt.", 400
 
     # HTML-Entities entschärfen (für <, >, & usw.), falls nötig
