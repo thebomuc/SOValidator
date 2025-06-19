@@ -335,14 +335,11 @@ def download_corrected():
             if tag != "EMBEDRAW":
                 corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
 
-    # <<< HIER: XML escapen
+    # **Jetzt sicher escapen!**
     corrected_xml = xml_escape_values(corrected_xml)
-    # Oder wenn du ElementTree bevorzugst:
-    # corrected_xml = escape_all_text(corrected_xml)
 
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
-    # Nur wenn der User „Ja“ gewählt hat, wird wirklich die XML eingebettet!
     if repair_embed == "yes":
         if doc.embfile_count() > 0:
             doc.embfile_del(0)
@@ -355,7 +352,6 @@ def download_corrected():
     basename, ext = os.path.splitext(orig_filename)
     download_name = f"{basename}_corrected.pdf"
 
-    # ---- Hier kommt das ZIP ----
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         with open(corrected_pdf_path, "rb") as f:
