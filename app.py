@@ -344,14 +344,16 @@ def download_corrected():
     corrections = request.form.getlist("correction")
     repair_embed = request.form.get("repair_embed")
 
+    # 1. Korrekturen anwenden
     corrected_xml = xml_raw
     for correction in corrections:
         if "|" in correction:
             tag, old, new = correction.split("|")
             if tag != "EMBEDRAW":
+                # Unescaped Werte ersetzen!
                 corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
 
-    # **Jetzt sicher escapen!**
+    # 2. Dann escapen
     corrected_xml = xml_escape_values(corrected_xml)
 
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
