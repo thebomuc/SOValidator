@@ -9,6 +9,7 @@ import re
 import pandas as pd
 from difflib import get_close_matches
 import sys
+import xml.etree.ElementTree as ET
 
 # Dynamischer Pfad für PyInstaller (sys._MEIPASS) für statische Ressourcen und Templates
 if hasattr(sys, '_MEIPASS'):
@@ -75,6 +76,31 @@ for sheet, column in codelists.items():
         code_sets[sheet] = set(values)
     except Exception:
         code_sets[sheet] = set()
+
+def escape_all_text(xml):
+    # Parst die XML, escapt Text- und Tail-Inhalte, serialisiert zurück
+    root = ET.fromstring(xml)
+    def recurse(elem):
+        if elem.text:
+            elem.text = (
+                elem.text.replace('&', '&amp;')
+                         .replace('<', '&lt;')
+                         .replace('>', '&gt;')
+                         .replace('"', '&quot;')
+                         .replace("'", '&apos;')
+            )
+        if elem.tail:
+            elem.tail = (
+                elem.tail.replace('&', '&amp;')
+                         .replace('<', '&lt;')
+                         .replace('>', '&gt;')
+                         .replace('"', '&quot;')
+                         .replace("'", '&apos;')
+            )
+        for child in elem:
+            recurse(child)
+    recurse(root)
+    return ET.tostring(root, encoding="unicode")
 
 def check_errorcodes(xml, file_path):
     reasons = []
@@ -308,6 +334,11 @@ def download_corrected():
             tag, old, new = correction.split("|")
             if tag != "EMBEDRAW":
                 corrected_xml = corrected_xml.replace(f">{old}<", f">{new}<")
+
+    # <<< HIER: XML escapen
+    corrected_xml = xml_escape_values(corrected_xml)
+    # Oder wenn du ElementTree bevorzugst:
+    # corrected_xml = escape_all_text(corrected_xml)
 
     corrected_pdf_path = tempfile.mktemp(suffix=".pdf")
     doc = fitz.open(original_pdf_path)
