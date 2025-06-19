@@ -420,6 +420,15 @@ def download_corrected():
             print(doc.embfile_info(i))
 
     doc.save(corrected_pdf_path)
+    print(">>> PDF Embedded Files (nachher):")
+    with fitz.open(corrected_pdf_path) as check_doc:
+        print("Embedded count:", check_doc.embfile_count())
+        for i in range(check_doc.embfile_count()):
+            info = check_doc.embfile_info(i)
+            print(info)
+            # Das neue XML im Klartext:
+            xml_bytes = check_doc.embfile_get(i)
+            print("Embedded XML (erste 200 Zeichen):", xml_bytes[:200].decode("utf-8", errors="replace"))
 
     orig_filename = session.get("uploaded_filename")
     if not orig_filename:
