@@ -458,7 +458,9 @@ def download_corrected():
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         with open(corrected_pdf_path, "rb") as f:
-            zf.writestr(download_name, f.read())
+            pdf_bytes = f.read()
+            print("MD5 vom endgültigen PDF:", hashlib.md5(pdf_bytes).hexdigest())
+            zf.writestr(download_name, pdf_bytes)
     zip_buffer.seek(0)
 
     return send_file(
