@@ -30,6 +30,8 @@ def xml_escape_values(xml):
 
 def replace_at_positions(xml, corrections):
     """Ersetzt die angegebenen Zeichenbereiche durch die neuen Werte (von hinten nach vorne!)."""
+    print("--- XML vor Korrekturen (repr, 1000 Zeichen): ---")
+    print(repr(xml[:1000]))
     corr_list = []
     for c in corrections:
         parts = c.split("|")
@@ -47,6 +49,10 @@ def replace_at_positions(xml, corrections):
         print(f"Ersetze [{start}:{end}] '{''.join(xml[start:end])}' → '{new_value}'")
         xml[start:end] = new_value
     return "".join(xml)
+    result = "".join(xml)
+    print("--- XML nach Korrekturen (repr, 1000 Zeichen): ---")
+    print(repr(result[:1000]))
+    return result
 
 def replace_nth_tag_value(xml, tag, old, new, n):
     """
