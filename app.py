@@ -11,6 +11,7 @@ from difflib import get_close_matches
 import sys
 import xml.etree.ElementTree as ET
 import re
+import hashlib
 
 def xml_escape_values(xml):
     """
