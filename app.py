@@ -403,7 +403,26 @@ def download_corrected():
 
     # *** Nur das hier! ***
     corrected_xml = replace_at_positions(xml_raw, corrections)
+    # === Zusätzliche Logs zur Ursachenforschung ===
+    print("Nach replace_at_positions:")
+    print("  [1744:1745]:", repr(corrected_xml[1744:1745]))
+    print("  [4313:4314]:", repr(corrected_xml[4313:4314]))
+    for m in re.finditer(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", corrected_xml):
+        print(f"{m.start(1)}:{m.end(1)} = '{m.group(1)}'")
+    
+    print("---- Kontrolle der Zeichen an den Korrektur-Positionen ----")
+    for c in corrections:
+        parts = c.split("|")
+        if len(parts) == 4:
+            label, start, end, new_value = parts
+            start, end = int(start), int(end)
+            snippet = corrected_xml[start-10:end+10]  # Kontext drum herum
+            print(f"Korrektur {label}: Position {start}:{end} → vor Korrektur: '{xml_raw[start:end]}' | nach Korrektur: '{corrected_xml[start:end]}' | Kontext: '{snippet}'")
 
+    print("---- CategoryCode-Übersicht (Positionen & Werte im gesamten XML) ----")
+    for m in re.finditer(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", corrected_xml):
+        print(f"CategoryCode bei [{m.start(1)}:{m.end(1)}] = '{m.group(1)}'")
+    print("-------------------------------------------------------------")
     print("XML nach Korrektur:", corrected_xml[:1000])
 
     # 2. Dann escapen
