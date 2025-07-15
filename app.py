@@ -45,10 +45,13 @@ def replace_all_tag_values(xml, replacements):
     return xml
 
 def replace_all_empty_tags(xml, corrections):
+    """
+    Füllt alle leeren Tags aus corrections (Liste von str 'CountryID||DE' oder 'CountryID| |DE').
+    Ersetzt sowohl <ram:Tag></ram:Tag> als auch <ram:Tag/> und auch ohne Prefix!
+    """
     for corr in corrections:
         if isinstance(corr, str):
             parts = corr.split("|")
-            # Die meisten Varianten kommen als "Feld|alt|neu" oder "Feld||neu"
             if len(parts) == 3:
                 tag, old, value = parts
             elif len(parts) == 2:
@@ -60,16 +63,17 @@ def replace_all_empty_tags(xml, corrections):
             value = corr.get("Korrekturvorschlag")
         if not tag or not value:
             continue
-        # Nimm nur den eigentlichen Wert, entferne evtl. Präfix wie '→ Möglicherweise meinten Sie:'
         value = value.split(':')[-1].strip() if ':' in value else value.strip()
-        # Match <ram:Tag></ram:Tag> und <ram:Tag/>
-        pattern1 = fr'<(ram:)?{tag}\s*></\1?{tag}\s*>'
-        pattern2 = fr'<(ram:)?{tag}\s*/>'
-        repl = fr'<\1{tag}>{value}</\1{tag}>'
+
+        # 1. Ersetze <ram:Tag></ram:Tag> und <ram:Tag/>
+        pattern1 = fr'<([a-zA-Z0-9]+:)?{tag}\s*></\1?{tag}\s*>'
+        pattern2 = fr'<([a-zA-Z0-9]+:)?{tag}\s*/>'
+        repl = lambda m: f"<{m.group(1) or ''}{tag}>{value}</{m.group(1) or ''}{tag}>"
         xml, c1 = re.subn(pattern1, repl, xml)
         xml, c2 = re.subn(pattern2, repl, xml)
-        print(f"Ersetze <ram:{tag}></ram:{tag}> und <ram:{tag}/> → <ram:{tag}>{value}</ram:{tag}>: {c1+c2} mal ersetzt.")
+        print(f"Ersetze leeres Tag <...:{tag}>: {c1+c2} mal ersetzt.")
     return xml
+
 
 def replace_at_positions(xml, corrections):
     """
