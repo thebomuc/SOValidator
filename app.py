@@ -472,18 +472,18 @@ def download_corrected():
             xml_bytes = check_doc.embfile_get(i)
             try:
                 xml_str = xml_bytes.decode("utf-8", errors="replace")
-            print("KategorieCode NACH Extraktion aus PDF (direkt nach embfile_get):")
-            for m in re.finditer(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", xml_str):
-                print(f"CategoryCode [{m.start(1)}:{m.end(1)}] = '{m.group(1)}'")
-            print("--- extrahiertes XML ---")
-            print(xml_str[1720:1760])
-            print("--- extrahiertes XML ENDE ---")
+                print("KategorieCode NACH Extraktion aus PDF (direkt nach embfile_get):")
+                for m in re.finditer(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", xml_str):
+                   print(f"CategoryCode [{m.start(1)}:{m.end(1)}] = '{m.group(1)}'")
+                print("--- extrahiertes XML ---")
+                print(xml_str[1720:1760])
+                print("--- extrahiertes XML ENDE ---")
             except Exception as e:
                 xml_str = str(xml_bytes)
-            print(f"Embedded XML (erste 200 Zeichen): {xml_str[:200]!r}")
-            print("Komplettes eingebettetes XML:")
-            print(xml_str)
-            print("-" * 60)
+                print(f"Embedded XML (erste 200 Zeichen): {xml_str[:200]!r}")
+                print("Komplettes eingebettetes XML:")
+                print(xml_str)
+                print("-" * 60)
 
     orig_filename = session.get("uploaded_filename")
     if not orig_filename:
