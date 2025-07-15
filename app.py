@@ -436,66 +436,44 @@ def download_corrected():
     print("PDF Embedded Files (vorher):", doc.embfile_count())
     for i in range(doc.embfile_count()):
         print(doc.embfile_info(i))
-    repair_embed = request.form.get("repair_embed")
-    if repair_embed == "yes":
-        print("PDF Embedded Files (vorher):", doc.embfile_count())
-        for i in range(doc.embfile_count()):
-            print(doc.embfile_info(i))
-        if doc.embfile_count() > 0:
-            doc.embfile_del(0)
-        print("-------- XML, das jetzt wirklich eingebettet wird --------")
-        print(corrected_xml)
-        print("-------- ENDE --------")
-        print("Test: Enthält corrected_xml an Position 1744–1745:", repr(corrected_xml[1744:1745]))
-        print("Alle CategoryCodes im XML:")
-        # PDF Embedded Files (vorher):
-        print("Vorherige Embfile-Infos:")
-        for i in range(doc.embfile_count()):
-            print(doc.embfile_info(i))
+    print("Vorherige Embfile-Infos:")
+    for i in range(doc.embfile_count()):
+        print(doc.embfile_info(i))
 
-        # Alle Embedded Files löschen!
-        while doc.embfile_count() > 0:
-            doc.embfile_del(0)
+    while doc.embfile_count() > 0:
+        doc.embfile_del(0)
 
-        # Bonus-Check: Korrigiertes XML in Datei speichern (Debug)
-        with open("/tmp/corrected_xml_debug.xml", "w", encoding="utf-8") as f:
-            f.write(corrected_xml)
-        print("Bonus-Check: corrected_xml wurde nach /tmp/corrected_xml_debug.xml geschrieben.")
+    with open("/tmp/corrected_xml_debug.xml", "w", encoding="utf-8") as f:
+        f.write(corrected_xml)
+    print("Bonus-Check: corrected_xml wurde nach /tmp/corrected_xml_debug.xml geschrieben.")
 
-        # Jetzt das neue XML einbetten
-        doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
+    doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
 
-        print("Nachherige Embfile-Infos:")
-        for i in range(doc.embfile_count()):
-            print(doc.embfile_info(i))
+    print("Nachherige Embfile-Infos:")
+    for i in range(doc.embfile_count()):
+        print(doc.embfile_info(i))
 
-        # Dokument speichern und schließen!
-        doc.save(corrected_pdf_path)
-        doc.close()
+    doc.save(corrected_pdf_path)
+    doc.close()
 
-        # Jetzt NEU öffnen und Embedded XML nochmal auslesen
-        with fitz.open(corrected_pdf_path) as check_doc:
-            print(">>> PDF Embedded Files (nachher):")
-            for i in range(check_doc.embfile_count()):
-                info = check_doc.embfile_info(i)
-                print(info)
-                xml_bytes = check_doc.embfile_get(i)
-                preview = xml_bytes[:200].decode("utf-8", errors="replace")
-                print("== Embedded XML-Preview ==", preview)
-            try:
-                xml_str = xml_bytes.decode("utf-8", errors="replace")
-                print("KategorieCode NACH Extraktion aus PDF (direkt nach embfile_get):")
-                for m in re.finditer(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", xml_str):
-                   print(f"CategoryCode [{m.start(1)}:{m.end(1)}] = '{m.group(1)}'")
-                print("--- extrahiertes XML ---")
-                print(xml_str[1720:1760])
-                print("--- extrahiertes XML ENDE ---")
-            except Exception as e:
-                xml_str = str(xml_bytes)
-                print(f"Embedded XML (erste 200 Zeichen): {xml_str[:200]!r}")
-                print("Komplettes eingebettetes XML:")
-                print(xml_str)
-                print("-" * 60)
+    with fitz.open(corrected_pdf_path) as check_doc:
+        print(">>> PDF Embedded Files (nachher):")
+        for i in range(check_doc.embfile_count()):
+            info = check_doc.embfile_info(i)
+            print(info)
+            xml_bytes = check_doc.embfile_get(i)
+            preview = xml_bytes[:200].decode("utf-8", errors="replace")
+            print("== Embedded XML-Preview ==", preview)
+        try:
+            xml_str = xml_bytes.decode("utf-8", errors="replace")
+            print("KategorieCode NACH Extraktion aus PDF (direkt nach embfile_get):")
+            for m in re.finditer(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", xml_str):
+                print(f"CategoryCode [{m.start(1)}:{m.end(1)}] = '{m.group(1)}'")
+            print("--- extrahiertes XML ---")
+            print(xml_str[1720:1760])
+        except Exception as e:
+            print("Fehler beim XML-Preview:", e)
+
 
     orig_filename = session.get("uploaded_filename")
     if not orig_filename:
