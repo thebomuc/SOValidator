@@ -403,21 +403,21 @@ def detect_xml_standard(xml):
 
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
-    import io
-    import zipfile
-
     original_pdf_path = session.get("original_pdf_path")
     if not original_pdf_path or not os.path.exists(original_pdf_path):
         return "❌ Originale PDF nicht gefunden.", 400
 
     xml_raw = request.form.get("xml_data")
-    corrections = request.form.getlist("correction")  # <--- DAS HAT GEFEHLT
-
-    print("Korrekturen empfangen:", corrections)
-    print("XML vorher:", xml_raw[:1000])
-
-    # Generischer Ersatz per Position (empfohlen!)
-    corrected_xml = replace_at_positions(xml_raw, corrections)
+    corrections = request.form.getlist("correction")
+    replacements = []
+    for corr in corrections:
+        parts = corr.split("|")
+        if len(parts) == 3:
+            tag, old, new = parts
+            if not tag.startswith("ram:"):
+                tag = "ram:" + tag
+            replacements.append({'tag': tag, 'old': old, 'new': new})
+    corrected_xml = replace_all_tag_values(xml_raw, replacements)
     # Falls du lieber mit Tags/Values ersetzen willst (aber weniger robust):
     # replacements = []
     # for corr in corrections:
