@@ -424,12 +424,23 @@ def download_corrected():
         print("-------- XML, das jetzt wirklich eingebettet wird --------")
         print(corrected_xml)
         print("-------- ENDE --------")
+        print("Test: Enthält corrected_xml an Position 1744–1745:", repr(corrected_xml[1744:1745]))
+        print("Alle CategoryCodes im XML:")
+        for m in re.finditer(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", corrected_xml):
+            print(f"{m.start(1)}:{m.end(1)} = '{m.group(1)}'")
         doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
         print("PDF Embedded Files (nachher):", doc.embfile_count())
         for i in range(doc.embfile_count()):
             print(doc.embfile_info(i))
 
     doc.save(corrected_pdf_path)
+    with fitz.open(corrected_pdf_path) as check_doc:
+        xml_bytes = check_doc.embfile_get(0)
+        xml_str = xml_bytes.decode("utf-8", errors="replace")
+        print("-------- Aus PDF extrahiertes XML nach dem Speichern --------")
+        print(xml_str)
+        print("-------- ENDE EXTRAKT --------")
+
     print(">>> PDF Embedded Files (nachher):")
     with fitz.open(corrected_pdf_path) as check_doc:
         xml_bytes = check_doc.embfile_get(0)
