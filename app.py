@@ -403,6 +403,9 @@ def download_corrected():
 
     # *** Nur das hier! ***
     corrected_xml = replace_at_positions(xml_raw, corrections)
+    print("KORRIGIERTES XML (direkt vor Einbettung):")
+    print(corrected_xml)
+    print("MD5:", hashlib.md5(corrected_xml.encode('utf-8')).hexdigest())
     # === Zusätzliche Logs zur Ursachenforschung ===
     print("Nach replace_at_positions:")
     print("  [1744:1745]:", repr(corrected_xml[1744:1745]))
