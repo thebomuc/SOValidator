@@ -403,7 +403,14 @@ def detect_xml_standard(xml):
 
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
-    ...
+    import io
+    import zipfile
+
+    original_pdf_path = session.get("original_pdf_path")
+    if not original_pdf_path or not os.path.exists(original_pdf_path):
+        return "❌ Originale PDF nicht gefunden.", 400
+
+    xml_raw = request.form.get("xml_data")   # <-- DAS MUSS HIER STEHEN!
     corrections = request.form.getlist("correction")
     replacements = []
     for corr in corrections:
