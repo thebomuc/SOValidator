@@ -45,23 +45,30 @@ def replace_all_tag_values(xml, replacements):
     return xml
 
 def replace_all_empty_tags(xml, corrections):
-    """
-    corrections: Liste von dicts mit keys 'Feld' und 'Korrekturvorschlag'
-    """
     for corr in corrections:
-        tag = corr['Feld']
-        value = corr['Korrekturvorschlag']
-        # Nur ausführen, wenn ein Vorschlag vorhanden ist und das Tag nicht leer ist
-        if value.strip() and tag.strip():
-            # Nimm nur den eigentlichen Wert, entferne evtl. Präfix wie '→ Möglicherweise meinten Sie:'
-            value = value.split(':')[-1].strip() if ':' in value else value.strip()
-            # Match <ram:Tag></ram:Tag> und <ram:Tag/>
-            pattern1 = fr'<(ram:)?{tag}\s*></\1?{tag}\s*>'
-            pattern2 = fr'<(ram:)?{tag}\s*/>'
-            repl = fr'<\1{tag}>{value}</\1{tag}>'
-            xml, c1 = re.subn(pattern1, repl, xml)
-            xml, c2 = re.subn(pattern2, repl, xml)
-            print(f"Ersetze <ram:{tag}></ram:{tag}> und <ram:{tag}/> → <ram:{tag}>{value}</ram:{tag}>: {c1+c2} mal ersetzt.")
+        if isinstance(corr, str):
+            parts = corr.split("|")
+            # Die meisten Varianten kommen als "Feld|alt|neu" oder "Feld||neu"
+            if len(parts) == 3:
+                tag, old, value = parts
+            elif len(parts) == 2:
+                tag, value = parts
+            else:
+                continue
+        else:
+            tag = corr.get("Feld")
+            value = corr.get("Korrekturvorschlag")
+        if not tag or not value:
+            continue
+        # Nimm nur den eigentlichen Wert, entferne evtl. Präfix wie '→ Möglicherweise meinten Sie:'
+        value = value.split(':')[-1].strip() if ':' in value else value.strip()
+        # Match <ram:Tag></ram:Tag> und <ram:Tag/>
+        pattern1 = fr'<(ram:)?{tag}\s*></\1?{tag}\s*>'
+        pattern2 = fr'<(ram:)?{tag}\s*/>'
+        repl = fr'<\1{tag}>{value}</\1{tag}>'
+        xml, c1 = re.subn(pattern1, repl, xml)
+        xml, c2 = re.subn(pattern2, repl, xml)
+        print(f"Ersetze <ram:{tag}></ram:{tag}> und <ram:{tag}/> → <ram:{tag}>{value}</ram:{tag}>: {c1+c2} mal ersetzt.")
     return xml
 
 def replace_at_positions(xml, corrections):
