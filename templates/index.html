@@ -46,14 +46,25 @@
             gap: 1em;
             align-items: center;
         }
-    </style>
+    .flex-equal-height {
+        display: flex;
+        gap: 1em;
+        align-items: stretch;
+    }
+    .flex-equal-height > .box {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+    }
+</style>
 </head>
 <body>
     <h1>SOValidator – PDF/XML Validierung</h1>
-    
-<div style="display:flex;gap:1em;align-items:center;">
-    <form method="POST" enctype="multipart/form-data" id="validator-form">
-        <div class="box">
+
+<div class="flex-equal-height">
+    <!-- Linke Box -->
+    <div class="box" style="max-width:320px;min-width:260px;">
+        <form method="POST" enctype="multipart/form-data" id="validator-form">
             <label>PDF- oder XML-Datei hochladen:</label><br><br>
             <input type="file" name="pdf_file" accept=".pdf,.xml" required>
             <br><br>
@@ -62,56 +73,56 @@
             <div class="button-row">
                 <button type="submit">Prüfen</button>
             </div>
-        </div>
-    </form>
-
-{% if filename %}
-  <div class="box" style="display: block; margin-bottom: 2em;">
-    <div>
-      <h4 style="margin:0;">📄 Geprüfte Datei: {{ filename }}</h4>
+        </form>
     </div>
-    {% if xml_standard %}
-      <div>
-        <br>
-        <span style="color:#006699;"><b>📄 Erkannter Standard:</b> {{ xml_standard }}</span>
-      </div>
+
+    {% if filename %}
+    <div class="box">
+        <div>
+          <h4 style="margin:0;">📄 Geprüfte Datei: {{ filename }}</h4>
+        </div>
+        {% if xml_standard %}
+        <div>
+          <br>
+          <span style="color:#006699;"><b>📄 Erkannter Standard:</b> {{ xml_standard }}</span>
+        </div>
+        {% endif %}
+        {% if codelist_table %}
+        <form method="POST" action="/download_corrected" style="margin-top:1em;">
+            <textarea name="xml_data" style="display:none;">{{ original_xml|default('')|e }}</textarea>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:8%;">Zeile</th>
+                        <th style="width:8%;">Zeichen</th>
+                        <th style="width:15%;">Feld</th>
+                        <th style="width:25%;">Fehlerhafter Wert</th>
+                        <th>Korrekturvorschlag</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in codelist_table %}
+                    <tr>
+                        <td>{{ row.line }}</td>
+                        <td>{{ row.column }}</td>
+                        <td>{{ row.label }}</td>
+                        <td><span class="highlight">{{ row.value }}</span></td>
+                        <td>
+                            {% if row.suggestion %}
+                                {{ row.suggestion|safe }}
+                            {% else %}
+                                &ndash;
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit">📥 Korrigierte PDF herunterladen (Korrekturvorschläge werden übernommen.)</button>
+        </form>
+        {% endif %}
+    </div>
     {% endif %}
-    {% if codelist_table %}
-      <form method="POST" action="/download_corrected" style="margin-top:1em;">
-        <textarea name="xml_data" style="display:none;">{{ original_xml|default('')|e }}</textarea>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:8%;">Zeile</th>
-                    <th style="width:8%;">Zeichen</th>
-                    <th style="width:15%;">Feld</th>
-                    <th style="width:25%;">Fehlerhafter Wert</th>
-                    <th>Korrekturvorschlag</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in codelist_table %}
-                <tr>
-                    <td>{{ row.line }}</td>
-                    <td>{{ row.column }}</td>
-                    <td>{{ row.label }}</td>
-                    <td><span class="highlight">{{ row.value }}</span></td>
-                    <td>
-                        {% if row.suggestion %}
-                            {{ row.suggestion|safe }}
-                        {% else %}
-                            &ndash;
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <button type="submit">📥 Korrigierte PDF herunterladen (Korrekturvorschläge werden übernommen.)</button>
-      </form>
-    {% endif %}
-  </div>
-{% endif %}
 </div>
 
 {% if result %}
