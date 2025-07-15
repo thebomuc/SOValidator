@@ -448,33 +448,40 @@ def download_corrected():
         print("-------- ENDE --------")
         print("Test: Enthält corrected_xml an Position 1744–1745:", repr(corrected_xml[1744:1745]))
         print("Alle CategoryCodes im XML:")
-        for m in re.finditer(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", corrected_xml):
-            print(f"{m.start(1)}:{m.end(1)} = '{m.group(1)}'")
-        while doc.embfile_count() > 0:
-            doc.embfile_del(0)
-        doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
-        print("PDF Embedded Files (nachher):", doc.embfile_count())
+        # PDF Embedded Files (vorher):
+        print("Vorherige Embfile-Infos:")
         for i in range(doc.embfile_count()):
             print(doc.embfile_info(i))
 
-    doc.save(corrected_pdf_path)
-    with fitz.open(corrected_pdf_path) as check_doc:
-        xml_bytes = check_doc.embfile_get(0)
-        xml_str = xml_bytes.decode("utf-8", errors="replace")
-        print("-------- Aus PDF extrahiertes XML nach dem Speichern --------")
-        print(xml_str)
-        print("-------- ENDE EXTRAKT --------")
+        # Alle Embedded Files löschen!
+        while doc.embfile_count() > 0:
+            doc.embfile_del(0)
 
-    print(">>> PDF Embedded Files (nachher):")
-    with fitz.open(corrected_pdf_path) as check_doc:
-        xml_bytes = check_doc.embfile_get(0)
-        print("MD5 von embedded XML:", hashlib.md5(xml_bytes).hexdigest())
-        embedded_count = check_doc.embfile_count()
-        print("Embedded count:", embedded_count)
-        for i in range(embedded_count):
-            info = check_doc.embfile_info(i)
-            print("Anhang-Info:", info)
-            xml_bytes = check_doc.embfile_get(i)
+        # Bonus-Check: Korrigiertes XML in Datei speichern (Debug)
+        with open("/tmp/corrected_xml_debug.xml", "w", encoding="utf-8") as f:
+            f.write(corrected_xml)
+        print("Bonus-Check: corrected_xml wurde nach /tmp/corrected_xml_debug.xml geschrieben.")
+
+        # Jetzt das neue XML einbetten
+        doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
+
+        print("Nachherige Embfile-Infos:")
+        for i in range(doc.embfile_count()):
+            print(doc.embfile_info(i))
+
+        # Dokument speichern und schließen!
+        doc.save(corrected_pdf_path)
+        doc.close()
+
+        # Jetzt NEU öffnen und Embedded XML nochmal auslesen
+        with fitz.open(corrected_pdf_path) as check_doc:
+            print(">>> PDF Embedded Files (nachher):")
+            for i in range(check_doc.embfile_count()):
+                info = check_doc.embfile_info(i)
+                print(info)
+                xml_bytes = check_doc.embfile_get(i)
+                preview = xml_bytes[:200].decode("utf-8", errors="replace")
+                print("== Embedded XML-Preview ==", preview)
             try:
                 xml_str = xml_bytes.decode("utf-8", errors="replace")
                 print("KategorieCode NACH Extraktion aus PDF (direkt nach embfile_get):")
