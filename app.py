@@ -45,11 +45,9 @@ def replace_all_tag_values(xml, replacements):
     return xml
 
 def replace_all_empty_tags(xml, corrections):
-    """
-    Füllt alle leeren Tags aus corrections (Liste von str 'CountryID||DE' oder 'CountryID| |DE').
-    Ersetzt sowohl <ram:Tag></ram:Tag> als auch <ram:Tag/> und auch ohne Prefix!
-    """
+    print("==> Corrections:", corrections)  # <-- HIER!
     for corr in corrections:
+        # Korrektur als String
         if isinstance(corr, str):
             parts = corr.split("|")
             if len(parts) == 3:
@@ -58,6 +56,7 @@ def replace_all_empty_tags(xml, corrections):
                 tag, value = parts
             else:
                 continue
+        # Korrektur als Dict (seltener Fall)
         else:
             tag = corr.get("Feld")
             value = corr.get("Korrekturvorschlag")
@@ -65,14 +64,21 @@ def replace_all_empty_tags(xml, corrections):
             continue
         value = value.split(':')[-1].strip() if ':' in value else value.strip()
 
-        # 1. Ersetze <ram:Tag></ram:Tag> und <ram:Tag/>
-        pattern1 = fr'<([a-zA-Z0-9]+:)?{tag}\s*></\1?{tag}\s*>'
-        pattern2 = fr'<([a-zA-Z0-9]+:)?{tag}\s*/>'
-        repl = lambda m: f"<{m.group(1) or ''}{tag}>{value}</{m.group(1) or ''}{tag}>"
+        # Ersetze <ram:CountryID></ram:CountryID> und <CountryID></CountryID>
+        pattern1 = fr'<([a-zA-Z0-9]+:)?{tag}\s*></([a-zA-Z0-9]+:)?{tag}\s*>'
+        def repl(m):
+            prefix = m.group(1) or m.group(2) or ''
+            return f"<{prefix}{tag}>{value}</{prefix}{tag}>"
         xml, c1 = re.subn(pattern1, repl, xml)
-        xml, c2 = re.subn(pattern2, repl, xml)
-        print(f"Ersetze leeres Tag <...:{tag}>: {c1+c2} mal ersetzt.")
+        # Zusätzlich: <ram:CountryID/> und <CountryID/>
+        pattern2 = fr'<([a-zA-Z0-9]+:)?{tag}\s*/>'
+        def repl2(m):
+            prefix = m.group(1) or ''
+            return f"<{prefix}{tag}>{value}</{prefix}{tag}>"
+        xml, c2 = re.subn(pattern2, repl2, xml)
+        print(f"Ersetze <...:{tag}> leer: {c1+c2} mal ersetzt.")
     return xml
+
 
 
 def replace_at_positions(xml, corrections):
