@@ -28,6 +28,21 @@ def xml_escape_values(xml):
     # Nur Inhalte escapen, nicht Tags!
     return re.sub(r'>([^<]+)<', escape_match, xml)
 
+def replace_all_tag_values(xml, replacements):
+    """
+    replacements: Liste von Dicts, jeweils mit 'tag', 'old', 'new'
+    Ersetzt alle <tag>old</tag> → <tag>new</tag> im XML, für jedes Replacement.
+    """
+    for r in replacements:
+        tag = r['tag']
+        old = r['old']
+        new = r['new']
+        # Pattern für <tag>old</tag>
+        pattern = fr'(<{re.escape(tag)}>)({re.escape(old)})(</{re.escape(tag)}>)'
+        xml, count = re.subn(pattern, fr'\1{new}\3', xml)
+        print(f"Ersetze <{tag}>{old}</{tag}> → <{tag}>{new}</{tag}>: {count} mal ersetzt.")
+    return xml
+
 def replace_at_positions(xml, corrections):
     """
     Ersetzt die angegebenen Zeichenbereiche durch die neuen Werte (von hinten nach vorne!).
@@ -396,13 +411,30 @@ def download_corrected():
         return "❌ Originale PDF nicht gefunden.", 400
 
     xml_raw = request.form.get("xml_data")
-    # ACHTUNG: Das ist jetzt die "Korrektur"-Liste mit Zeichenpositionen!
-    corrections = sum([c.split(",") for c in request.form.getlist("correction")], [])
+    corrections = request.form.getlist("correction")  # <--- DAS HAT GEFEHLT
+
     print("Korrekturen empfangen:", corrections)
     print("XML vorher:", xml_raw[:1000])
 
-    # *** Nur das hier! ***
+    # Generischer Ersatz per Position (empfohlen!)
     corrected_xml = replace_at_positions(xml_raw, corrections)
+    # Falls du lieber mit Tags/Values ersetzen willst (aber weniger robust):
+    # replacements = []
+    # for corr in corrections:
+    #     parts = corr.split("|")
+    #     if len(parts) == 4:
+    #         tag, start, end, new_value = parts
+    #         start, end = int(start), int(end)
+    #         old_value = xml_raw[start:end]
+    #         replacements.append({'tag': tag, 'old': old_value, 'new': new_value})
+    # corrected_xml = replace_all_tag_values(xml_raw, replacements)
+
+    print("KORRIGIERTES XML (direkt vor Einbettung):")
+    print(corrected_xml)
+    print("MD5:", hashlib.md5(corrected_xml.encode('utf-8')).hexdigest())
+
+    # Jetzt escapen
+    corrected_xml = xml_escape_values(corrected_xml)
     print("KORRIGIERTES XML (direkt vor Einbettung):")
     print(corrected_xml)
     print("MD5:", hashlib.md5(corrected_xml.encode('utf-8')).hexdigest())
