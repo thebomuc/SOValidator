@@ -403,18 +403,15 @@ def detect_xml_standard(xml):
 
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
-    original_pdf_path = session.get("original_pdf_path")
-    if not original_pdf_path or not os.path.exists(original_pdf_path):
-        return "❌ Originale PDF nicht gefunden.", 400
-
-    xml_raw = request.form.get("xml_data")
+    ...
     corrections = request.form.getlist("correction")
     replacements = []
     for corr in corrections:
         parts = corr.split("|")
         if len(parts) == 3:
             tag, old, new = parts
-            if not tag.startswith("ram:"):
+            # ggf. Präfix prüfen:
+            if not tag.startswith("ram:") and not tag.startswith("qdt:") and not tag.startswith("udt:") and not tag.startswith("rsm:"):
                 tag = "ram:" + tag
             replacements.append({'tag': tag, 'old': old, 'new': new})
     corrected_xml = replace_all_tag_values(xml_raw, replacements)
@@ -675,7 +672,7 @@ def index():
                             for option in sorted_options:
                                 selected = 'selected' if closest_match and option == closest_match[0] else ''
                                 dropdown_html += (
-                                    f'<option value="{label}|{start}|{end}|{option}" {selected}>{option}</option>'
+                                    f'<option value="{label}|{value}|{option}" {selected}>{option}</option>'
                                 )
                             dropdown_html += '</select></label>'
 
