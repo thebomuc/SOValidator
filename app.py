@@ -29,7 +29,9 @@ def xml_escape_values(xml):
     return re.sub(r'>([^<]+)<', escape_match, xml)
 
 def replace_at_positions(xml, corrections):
-    """Ersetzt die angegebenen Zeichenbereiche durch die neuen Werte (von hinten nach vorne!)."""
+    """
+    Ersetzt die angegebenen Zeichenbereiche durch die neuen Werte (von hinten nach vorne!).
+    """
     print("--- XML vor Korrekturen (repr, 1000 Zeichen): ---")
     print(repr(xml[:1000]))
     corr_list = []
@@ -40,19 +42,17 @@ def replace_at_positions(xml, corrections):
             start, end = int(start), int(end)
             print(f"Korrektur: {label} {start}:{end} → '{xml[start:end]}' → '{new_value}'")
             corr_list.append((start, end, new_value))
-    # Sortieren: von hinten nach vorne!
-    corr_list.sort(reverse=True, key=lambda x: x[0])
-    xml = list(xml)
 
+    # Von hinten nach vorne sortieren, damit Indexe nach vorne unverändert bleiben!
+    corr_list.sort(reverse=True, key=lambda x: x[0])
+
+    xml_str = xml
     for start, end, new_value in corr_list:
-        print(f"Position {start}:{end} → '{''.join(xml[start:end])}'")
-        print(f"Ersetze [{start}:{end}] '{''.join(xml[start:end])}' → '{new_value}'")
-        xml[start:end] = new_value
-    return "".join(xml)
-    result = "".join(xml)
+        print(f"Ersetze [{start}:{end}] '{xml_str[start:end]}' → '{new_value}'")
+        xml_str = xml_str[:start] + new_value + xml_str[end:]
     print("--- XML nach Korrekturen (repr, 1000 Zeichen): ---")
-    print(repr(result[:1000]))
-    return result
+    print(repr(xml_str[:1000]))
+    return xml_str
 
 def replace_nth_tag_value(xml, tag, old, new, n):
     """
