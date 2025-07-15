@@ -44,6 +44,26 @@ def replace_all_tag_values(xml, replacements):
         print(f"Ersetze <{tag}>{old}</{tag}> → <{tag}>{new}</{tag}>: {count} mal ersetzt.")
     return xml
 
+def replace_all_empty_tags(xml, corrections):
+    """
+    corrections: Liste von dicts mit keys 'Feld' und 'Korrekturvorschlag'
+    """
+    for corr in corrections:
+        tag = corr['Feld']
+        value = corr['Korrekturvorschlag']
+        # Nur ausführen, wenn ein Vorschlag vorhanden ist und das Tag nicht leer ist
+        if value.strip() and tag.strip():
+            # Nimm nur den eigentlichen Wert, entferne evtl. Präfix wie '→ Möglicherweise meinten Sie:'
+            value = value.split(':')[-1].strip() if ':' in value else value.strip()
+            # Match <ram:Tag></ram:Tag> und <ram:Tag/>
+            pattern1 = fr'<(ram:)?{tag}\s*></\1?{tag}\s*>'
+            pattern2 = fr'<(ram:)?{tag}\s*/>'
+            repl = fr'<\1{tag}>{value}</\1{tag}>'
+            xml, c1 = re.subn(pattern1, repl, xml)
+            xml, c2 = re.subn(pattern2, repl, xml)
+            print(f"Ersetze <ram:{tag}></ram:{tag}> und <ram:{tag}/> → <ram:{tag}>{value}</ram:{tag}>: {c1+c2} mal ersetzt.")
+    return xml
+
 def replace_at_positions(xml, corrections):
     """
     Ersetzt die angegebenen Zeichenbereiche durch die neuen Werte (von hinten nach vorne!).
@@ -411,7 +431,9 @@ def download_corrected():
     if not original_pdf_path or not os.path.exists(original_pdf_path):
         return "❌ Originale PDF nicht gefunden.", 400
 
-    xml_raw = request.form.get("xml_data")   # <-- DAS MUSS HIER STEHEN!
+    xml_raw = request.form.get("xml_data")
+    corrected_xml = xml_raw
+
     corrections = request.form.getlist("correction")
     replacements = []
     for corr in corrections:
@@ -422,7 +444,11 @@ def download_corrected():
             if not tag.startswith("ram:") and not tag.startswith("qdt:") and not tag.startswith("udt:") and not tag.startswith("rsm:"):
                 tag = "ram:" + tag
             replacements.append({'tag': tag, 'old': old, 'new': new})
-    corrected_xml = replace_all_tag_values(xml_raw, replacements)
+
+    # 1. Value-Replacements
+    corrected_xml = replace_all_tag_values(corrected_xml, replacements)
+    # 2. Empty-Tag-Replacements (auf das ERGEBNIS von Schritt 1 anwenden!)
+    corrected_xml = replace_all_empty_tags(corrected_xml, corrections)
     # Falls du lieber mit Tags/Values ersetzen willst (aber weniger robust):
     # replacements = []
     # for corr in corrections:
