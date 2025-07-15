@@ -447,6 +447,8 @@ def download_corrected():
         print("Alle CategoryCodes im XML:")
         for m in re.finditer(r"<ram:CategoryCode>(.*?)</ram:CategoryCode>", corrected_xml):
             print(f"{m.start(1)}:{m.end(1)} = '{m.group(1)}'")
+        while doc.embfile_count() > 0:
+            doc.embfile_del(0)
         doc.embfile_add("factur-x.xml", corrected_xml.encode("utf-8"))
         print("PDF Embedded Files (nachher):", doc.embfile_count())
         for i in range(doc.embfile_count()):
