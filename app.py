@@ -37,11 +37,11 @@ def replace_all_tag_values(xml, replacements):
         tag = r['tag']
         old = r['old']
         new = r['new']
-        # Pattern für <tag>old</tag>
         pattern = fr'(<{re.escape(tag)}>)({re.escape(old)})(</{re.escape(tag)}>)'
-        xml, count = re.subn(pattern, fr'\1{new}\3', xml)
+        def repl(m):
+            return f"{m.group(1)}{new}{m.group(3)}"
+        xml, count = re.subn(pattern, repl, xml)
         print(f"Ersetze <{tag}>{old}</{tag}> → <{tag}>{new}</{tag}>: {count} mal ersetzt.")
-    return xml
 
 def replace_at_positions(xml, corrections):
     """
