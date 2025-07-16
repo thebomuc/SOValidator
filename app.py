@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, send_file, session
 from markupsafe import Markup
+from category_code_tools import replace_category_codes
 import zipfile
 import fitz  # PyMuPDF
 import tempfile
@@ -12,6 +13,23 @@ import sys
 import xml.etree.ElementTree as ET
 import re
 import hashlib
+
+def replace_category_codes(xml_str, replacements):
+    """
+    Ersetzt gezielt bestimmte <ram:CategoryCode> anhand Index.
+
+    :param xml_str: Das XML als String
+    :param replacements: Liste von Dicts wie [{ "index": 2, "new_value": "S" }, ...]
+    :return: Korrigiertes XML als String
+    """
+    ns = {'ram': 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100'}
+    tree = ET.ElementTree(ET.fromstring(xml_str))
+    all_codes = tree.findall('.//ram:CategoryCode', ns)
+    for repl in replacements:
+        idx = repl['index']
+        if 0 <= idx < len(all_codes):
+            all_codes[idx].text = repl['new_value']
+    return ET.tostring(tree.getroot(), encoding='unicode')
 
 def replace_value_in_window(xml, position, tag, old_value, new_value, window=40):
     """
@@ -487,7 +505,7 @@ def check_custom_xmp(pdf_path):
         if found:
             break
     return found
-
+    
 def validate_xml(xml):
     parser = etree.XMLParser(recover=True)
     try:
@@ -594,57 +612,61 @@ def replace_value_in_window(xml, position, tag, old_value, new_value, window=30)
     print(f"Kein zu ersetzendes <{tag}> mit Wert '{old_value}' oder leer im Kontext gefunden!")
     return xml
 
+@app.route("/correct_xml", methods=["POST"])
+def correct_xml_endpoint():
+    data = request.get_json()
+    xml_str = data["xml"]
+    replacements = data["replacements"]  # [{"index": x, "new_value": y}, ...]
+    result_xml = replace_category_codes(xml_str, replacements)
+    return result_xml, 200, {'Content-Type': 'application/xml'}
 
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
+    data = request.get_json()
+    original_xml = data["xml"]
+    replacements = data.get("replacements", [])  # [{ "index": x, "new_value": "S" }, ...]
+    corrections = data.get("corrections", [])    # alte correction-Strings (z.B. für CountryID)
+    corrected_xml = replace_category_codes(original_xml, replacements)
     import io, zipfile
 
     original_pdf_path = session.get("original_pdf_path")
     if not original_pdf_path or not os.path.exists(original_pdf_path):
         return "❌ Originale PDF nicht gefunden.", 400
 
-    xml_raw = request.form.get("xml_data")
-    corrected_xml = xml_raw
-
-    corrections = request.form.getlist("correction")
-
     # Korrekturen: Standard (|3) und Positionskorrekturen (|4)
     for corr in corrections:
-        parts = corr.split("|")
-        # Fenster-Korrektur (explizite Position)
+        parts = [p.strip() for p in corr.split("|")]
         if len(parts) == 4:
+            # Positionskorrektur wie bisher
             label, start, end, new_value = parts
             start, end = int(start), int(end)
             old_value = corrected_xml[start:end]
             tag = label if ":" in label else "ram:" + label
-            corrected_xml = replace_value_in_window(
-                corrected_xml, start, tag, old_value, new_value
-            )
-            continue
-        # 3er-Korrektur: Tag|old|new  (Dropdown)
+            corrected_xml = replace_value_in_window(corrected_xml, start, tag, old_value, new_value)
         elif len(parts) == 3:
+            # Tag|old|new (aber NICHT CategoryCode! Siehe unten)
             tag, old_value, new_value = parts
-            tagname = tag.split(":")[-1]
-            tag_full = tag if ":" in tag else "ram:" + tagname
-            regex = re.compile(fr"<([a-zA-Z0-9]+:)?{tagname}\s*>(.*?)</([a-zA-Z0-9]+:)?{tagname}\s*>")
-            found = False
-            for m in regex.finditer(corrected_xml):
-                val = m.group(2).strip()
-                # Leerer Wert oder exakter Wert
-                if (val == old_value) or (old_value == "" and val == ""):
-                    corrected_xml = replace_value_in_window(
-                        corrected_xml, m.start(2), tag_full, old_value, new_value
-                    )
-                    found = True
-                    break
-            if not found and old_value == "":
-                # Self-closing Tag (<ram:CategoryCode/>)
-                regex2 = re.compile(fr"<([a-zA-Z0-9]+:)?{tagname}\s*/>")
-                for m in regex2.finditer(corrected_xml):
-                    corrected_xml = replace_value_in_window(
-                        corrected_xml, m.start(), tag_full, "", new_value
-                    )
-                    break
+            if tag.split(":")[-1].lower() != "categorycode":
+                tagname = tag.split(":")[-1]
+                tag_full = tag if ":" in tag else "ram:" + tagname
+                regex = re.compile(fr"<([a-zA-Z0-9]+:)?{tagname}\s*>(.*?)</([a-zA-Z0-9]+:)?{tagname}\s*>")
+                found = False
+                for m in regex.finditer(corrected_xml):
+                    val = m.group(2).strip()
+                    if (val == old_value) or (old_value == "" and val == ""):
+                        corrected_xml = replace_value_in_window(
+                            corrected_xml, m.start(2), tag_full, old_value, new_value
+                        )
+                        found = True
+                        break
+                if not found and old_value == "":
+                    # Self-closing Tag (<ram:XYZ/>)
+                    regex2 = re.compile(fr"<([a-zA-Z0-9]+:)?{tagname}\s*/>")
+                    for m in regex2.finditer(corrected_xml):
+                        corrected_xml = replace_value_in_window(
+                            corrected_xml, m.start(), tag_full, "", new_value
+                        )
+                        break
         # Wenn Positionsbasierte Korrektur ("label|start|end|newvalue")
         elif len(parts) == 4:
             label, start, end, new_value = parts
