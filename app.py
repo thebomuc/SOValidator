@@ -44,6 +44,68 @@ def replace_all_tag_values(xml, replacements):
         print(f"Ersetze <{tag}>{old}</{tag}> → <{tag}>{new}</{tag}>: {count} mal ersetzt.")
     return xml
 
+def replace_value_in_window(xml, position, tag, old_value, new_value, window=30):
+    """
+    Ersetzt im Fenster um `position` herum das erste Vorkommen von <tag>old_value</tag> oder ein leeres Tag <tag></tag>/<tag/> durch <tag>new_value</tag>.
+    """
+    start = max(0, position - window)
+    end = min(len(xml), position + window)
+    snippet = xml[start:end]
+
+    # Verschiedene mögliche Schreibweisen für das Tag
+    tagname = tag.split(":")[-1]  # Nur der Tag-Name
+    pattern_full = re.compile(
+        fr'<([a-zA-Z0-9]+:)?{tagname}\s*>\s*{re.escape(old_value)}\s*</([a-zA-Z0-9]+:)?{tagname}\s*>'
+    )
+    pattern_empty = re.compile(
+        fr'<([a-zA-Z0-9]+:)?{tagname}\s*>\s*</([a-zA-Z0-9]+:)?{tagname}\s*>'
+    )
+    pattern_selfclose = re.compile(
+        fr'<([a-zA-Z0-9]+:)?{tagname}\s*/>'
+    )
+
+    # 1. Versuche mit Wert
+    m = pattern_full.search(snippet)
+    if m:
+        rel_start = m.start()
+        rel_end = m.end()
+        before = snippet[:rel_start]
+        after = snippet[rel_end:]
+        prefix = m.group(1) or m.group(2) or ''
+        new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
+        xml = xml[:start] + before + new_tag + after + xml[end:]
+        print(f"Ersetzt gefülltes <{tag}> in Fenster: {new_tag}")
+        return xml
+
+    # 2. Versuche leeres Tag
+    m = pattern_empty.search(snippet)
+    if m:
+        rel_start = m.start()
+        rel_end = m.end()
+        before = snippet[:rel_start]
+        after = snippet[rel_end:]
+        prefix = m.group(1) or m.group(2) or ''
+        new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
+        xml = xml[:start] + before + new_tag + after + xml[end:]
+        print(f"Ersetzt leeres <{tag}> in Fenster: {new_tag}")
+        return xml
+
+    # 3. Versuche Self-Closing Tag
+    m = pattern_selfclose.search(snippet)
+    if m:
+        rel_start = m.start()
+        rel_end = m.end()
+        before = snippet[:rel_start]
+        after = snippet[rel_end:]
+        prefix = m.group(1) or ''
+        new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
+        xml = xml[:start] + before + new_tag + after + xml[end:]
+        print(f"Ersetzt Self-Closing <{tag}/> in Fenster: {new_tag}")
+        return xml
+
+    print(f"Kein zu ersetzendes <{tag}> mit Wert '{old_value}' oder leer im Kontextfenster gefunden!")
+    return xml
+
 def replace_all_empty_tags(xml, corrections):
     print("==> Corrections:", corrections)  # <-- HIER!
     for corr in corrections:
@@ -439,10 +501,46 @@ def detect_xml_standard(xml):
         return "PEPPOL UBL"
     return "Unbekannt"
 
+def replace_value_in_window(xml, position, tag, old_value, new_value, window=30):
+    """
+    Ersetzt im Fenster um `position` das Vorkommen von <tag>old_value</tag>, <tag></tag> oder <tag/> durch <tag>new_value</tag>.
+    """
+    start = max(0, position - window)
+    end = min(len(xml), position + window)
+    snippet = xml[start:end]
+
+    tagname = tag.split(":")[-1]
+    # 1. Gefülltes Tag
+    pattern_full = re.compile(
+        fr'<([a-zA-Z0-9]+:)?{tagname}\s*>\s*{re.escape(old_value)}\s*</([a-zA-Z0-9]+:)?{tagname}\s*>'
+    )
+    # 2. Leeres Tag
+    pattern_empty = re.compile(
+        fr'<([a-zA-Z0-9]+:)?{tagname}\s*>\s*</([a-zA-Z0-9]+:)?{tagname}\s*>'
+    )
+    # 3. Self-Closing
+    pattern_selfclose = re.compile(
+        fr'<([a-zA-Z0-9]+:)?{tagname}\s*/>'
+    )
+
+    # Ersetze im Fenster den ersten passenden Fall
+    for patt in (pattern_full, pattern_empty, pattern_selfclose):
+        m = patt.search(snippet)
+        if m:
+            rel_start = m.start()
+            rel_end = m.end()
+            prefix = m.group(1) or m.group(2) or ''
+            new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
+            new_xml = xml[:start] + snippet[:rel_start] + new_tag + snippet[rel_end:] + xml[end:]
+            print(f"Ersetze im Fenster <{tag}> ({old_value!r}): {new_tag}")
+            return new_xml
+    print(f"Kein zu ersetzendes <{tag}> mit Wert '{old_value}' oder leer im Kontext gefunden!")
+    return xml
+
+
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
-    import io
-    import zipfile
+    import io, zipfile
 
     original_pdf_path = session.get("original_pdf_path")
     if not original_pdf_path or not os.path.exists(original_pdf_path):
@@ -452,30 +550,40 @@ def download_corrected():
     corrected_xml = xml_raw
 
     corrections = request.form.getlist("correction")
-    replacements = []
+
+    # Korrekturen: Standard (|3) und Positionskorrekturen (|4)
     for corr in corrections:
         parts = corr.split("|")
+        # Korrekturvorschläge aus DropDown (z.B. label|old|new)
         if len(parts) == 3:
-            tag, old, new = parts
-            # ggf. Präfix prüfen:
-            if not tag.startswith("ram:") and not tag.startswith("qdt:") and not tag.startswith("udt:") and not tag.startswith("rsm:"):
-                tag = "ram:" + tag
-            replacements.append({'tag': tag, 'old': old, 'new': new})
-
-    # 1. Value-Replacements
-    corrected_xml = replace_all_tag_values(corrected_xml, replacements)
-    # 2. Empty-Tag-Replacements (auf das ERGEBNIS von Schritt 1 anwenden!)
-    corrected_xml = replace_all_empty_tags(corrected_xml, corrections)
-    # Falls du lieber mit Tags/Values ersetzen willst (aber weniger robust):
-    # replacements = []
-    # for corr in corrections:
-    #     parts = corr.split("|")
-    #     if len(parts) == 4:
-    #         tag, start, end, new_value = parts
-    #         start, end = int(start), int(end)
-    #         old_value = xml_raw[start:end]
-    #         replacements.append({'tag': tag, 'old': old_value, 'new': new_value})
-    # corrected_xml = replace_all_tag_values(xml_raw, replacements)
+            tag, old_value, new_value = parts
+            # Suche alle Positionen von <tag>old_value</tag> im XML (vorsichtshalber alle – wir nehmen die erste im Kontext)
+            for m in re.finditer(fr"<([a-zA-Z0-9]+:)?{tag.split(':')[-1]}\s*>(.*?)</([a-zA-Z0-9]+:)?{tag.split(':')[-1]}\s*>", corrected_xml):
+                val = m.group(2).strip()
+                if val == old_value or (val == "" and old_value == ""):
+                    # Nimm die Startposition des Wertes
+                    corrected_xml = replace_value_in_window(
+                        corrected_xml,
+                        m.start(2),
+                        tag,
+                        old_value,
+                        new_value
+                    )
+                    break  # Nur erstes Vorkommen im XML (sonst ggf. für jede Korrektur in codelist_table durchloopen!)
+        # Wenn Positionsbasierte Korrektur ("label|start|end|newvalue")
+        elif len(parts) == 4:
+            label, start, end, new_value = parts
+            start, end = int(start), int(end)
+            old_value = corrected_xml[start:end]
+            tag = label if ":" in label else "ram:" + label  # fallback
+            corrected_xml = replace_value_in_window(
+                corrected_xml,
+                start,
+                tag,
+                old_value,
+                new_value
+            )
+        # Sonst ignorieren
 
     print("KORRIGIERTES XML (direkt vor Einbettung):")
     print(corrected_xml)
