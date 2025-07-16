@@ -13,6 +13,65 @@ import xml.etree.ElementTree as ET
 import re
 import hashlib
 
+def replace_value_in_window(xml, position, tag, old_value, new_value, window=40):
+    """
+    Ersetzt im Fenster um `position` das Vorkommen von <tag>old_value</tag>, <tag></tag> oder <tag/> durch <tag>new_value</tag>.
+    Funktioniert auch mit Namespace.
+    """
+    start = max(0, position - window)
+    end = min(len(xml), position + window)
+    snippet = xml[start:end]
+
+    tagname = tag.split(":")[-1]
+    # 1. Gefüllt: <ram:Tag>WERT</ram:Tag>
+    pattern_full = re.compile(
+        fr'<([a-zA-Z0-9]+:)?{tagname}\s*>\s*{re.escape(old_value)}\s*</([a-zA-Z0-9]+:)?{tagname}\s*>'
+    )
+    # 2. Leer: <ram:Tag></ram:Tag>
+    pattern_empty = re.compile(
+        fr'<([a-zA-Z0-9]+:)?{tagname}\s*>\s*</([a-zA-Z0-9]+:)?{tagname}\s*>'
+    )
+    # 3. Self-closing: <ram:Tag/>
+    pattern_selfclose = re.compile(
+        fr'<([a-zA-Z0-9]+:)?{tagname}\s*/>'
+    )
+
+    if old_value != "":
+        m = pattern_full.search(snippet)
+        if m:
+            prefix = m.group(1) or m.group(2) or ''
+            rel_start = m.start()
+            rel_end = m.end()
+            new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
+            new_xml = xml[:start] + snippet[:rel_start] + new_tag + snippet[rel_end:] + xml[end:]
+            print(f"[Window-Replace] <{tagname}>{old_value}</{tagname}> → <{tagname}>{new_value}</{tagname}> (mit Prefix: {prefix})")
+            return new_xml
+
+    # Leeres Tag ersetzen
+    m = pattern_empty.search(snippet)
+    if m:
+        prefix = m.group(1) or m.group(2) or ''
+        rel_start = m.start()
+        rel_end = m.end()
+        new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
+        new_xml = xml[:start] + snippet[:rel_start] + new_tag + snippet[rel_end:] + xml[end:]
+        print(f"[Window-Replace] Leeres <{tagname}></{tagname}> → <{tagname}>{new_value}</{tagname}> (mit Prefix: {prefix})")
+        return new_xml
+
+    # Self-closing Tag ersetzen
+    m = pattern_selfclose.search(snippet)
+    if m:
+        prefix = m.group(1) or ''
+        rel_start = m.start()
+        rel_end = m.end()
+        new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
+        new_xml = xml[:start] + snippet[:rel_start] + new_tag + snippet[rel_end:] + xml[end:]
+        print(f"[Window-Replace] Selfclose <{tagname}/> → <{tagname}>{new_value}</{tagname}> (mit Prefix: {prefix})")
+        return new_xml
+
+    print(f"[Window-Replace] Kein Treffer für <{tagname}> ({old_value!r}) im Fenster.")
+    return xml
+
 def xml_escape_values(xml):
     """
     Ersetzt in allen XML-Elementwerten die Zeichen &, <, >, ", ' durch die korrekten Entities.
@@ -552,22 +611,39 @@ def download_corrected():
     # Korrekturen: Standard (|3) und Positionskorrekturen (|4)
     for corr in corrections:
         parts = corr.split("|")
-        # Korrekturvorschläge aus DropDown (z.B. label|old|new)
-        if len(parts) == 3:
+        # 4er-Position (Fensterbasiert: z.B. "CategoryCode|1744|1745|S")
+        if len(parts) == 4:
+            label, start, end, new_value = parts
+            start, end = int(start), int(end)
+            old_value = corrected_xml[start:end]
+            tag = label if ":" in label else "ram:" + label
+            corrected_xml = replace_value_in_window(
+                corrected_xml, start, tag, old_value, new_value
+            )
+            continue
+        # Dropdown-3er (z.B. "CategoryCode|s|S" oder "CountryID||DE")
+        elif len(parts) == 3:
             tag, old_value, new_value = parts
-            # Suche alle Positionen von <tag>old_value</tag> im XML (vorsichtshalber alle – wir nehmen die erste im Kontext)
-            for m in re.finditer(fr"<([a-zA-Z0-9]+:)?{tag.split(':')[-1]}\s*>(.*?)</([a-zA-Z0-9]+:)?{tag.split(':')[-1]}\s*>", corrected_xml):
+            tagname = tag.split(":")[-1]
+            regex = re.compile(fr"<([a-zA-Z0-9]+:)?{tagname}\s*>(.*?)</([a-zA-Z0-9]+:)?{tagname}\s*>")
+            found = False
+            for m in regex.finditer(corrected_xml):
                 val = m.group(2).strip()
-                if val == old_value or (val == "" and old_value == ""):
-                    # Nimm die Startposition des Wertes
+                # Leerer Wert oder exakter Wert
+                if (val == old_value) or (old_value == "" and val == ""):
                     corrected_xml = replace_value_in_window(
-                        corrected_xml,
-                        m.start(2),
-                        tag,
-                        old_value,
-                        new_value
+                        corrected_xml, m.start(2), tag, old_value, new_value
                     )
-                    break  # Nur erstes Vorkommen im XML (sonst ggf. für jede Korrektur in codelist_table durchloopen!)
+                    found = True
+                    break
+            if not found and old_value == "":
+                # Zusätzlich auf Self-Closing prüfen
+                regex2 = re.compile(fr"<([a-zA-Z0-9]+:)?{tagname}\s*/>")
+                for m in regex2.finditer(corrected_xml):
+                    corrected_xml = replace_value_in_window(
+                        corrected_xml, m.start(), tag, "", new_value
+                    )
+                    break
         # Wenn Positionsbasierte Korrektur ("label|start|end|newvalue")
         elif len(parts) == 4:
             label, start, end, new_value = parts
