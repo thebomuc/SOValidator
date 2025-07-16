@@ -611,7 +611,7 @@ def download_corrected():
     # Korrekturen: Standard (|3) und Positionskorrekturen (|4)
     for corr in corrections:
         parts = corr.split("|")
-        # 4er-Position (Fensterbasiert: z.B. "CategoryCode|1744|1745|S")
+        # Fenster-Korrektur (explizite Position)
         if len(parts) == 4:
             label, start, end, new_value = parts
             start, end = int(start), int(end)
@@ -621,10 +621,11 @@ def download_corrected():
                 corrected_xml, start, tag, old_value, new_value
             )
             continue
-        # Dropdown-3er (z.B. "CategoryCode|s|S" oder "CountryID||DE")
+        # 3er-Korrektur: Tag|old|new  (Dropdown)
         elif len(parts) == 3:
             tag, old_value, new_value = parts
             tagname = tag.split(":")[-1]
+            tag_full = tag if ":" in tag else "ram:" + tagname
             regex = re.compile(fr"<([a-zA-Z0-9]+:)?{tagname}\s*>(.*?)</([a-zA-Z0-9]+:)?{tagname}\s*>")
             found = False
             for m in regex.finditer(corrected_xml):
@@ -632,16 +633,16 @@ def download_corrected():
                 # Leerer Wert oder exakter Wert
                 if (val == old_value) or (old_value == "" and val == ""):
                     corrected_xml = replace_value_in_window(
-                        corrected_xml, m.start(2), tag, old_value, new_value
+                        corrected_xml, m.start(2), tag_full, old_value, new_value
                     )
                     found = True
                     break
             if not found and old_value == "":
-                # Zusätzlich auf Self-Closing prüfen
+                # Self-closing Tag (<ram:CategoryCode/>)
                 regex2 = re.compile(fr"<([a-zA-Z0-9]+:)?{tagname}\s*/>")
                 for m in regex2.finditer(corrected_xml):
                     corrected_xml = replace_value_in_window(
-                        corrected_xml, m.start(), tag, "", new_value
+                        corrected_xml, m.start(), tag_full, "", new_value
                     )
                     break
         # Wenn Positionsbasierte Korrektur ("label|start|end|newvalue")
