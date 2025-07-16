@@ -46,65 +46,63 @@ def replace_all_tag_values(xml, replacements):
 
 def replace_value_in_window(xml, position, tag, old_value, new_value, window=30):
     """
-    Ersetzt im Fenster um `position` herum das erste Vorkommen von <tag>old_value</tag> oder ein leeres Tag <tag></tag>/<tag/> durch <tag>new_value</tag>.
+    Ersetzt im Fenster um `position` das Vorkommen von <tag>old_value</tag>, <tag></tag> oder <tag/> durch <tag>new_value</tag>.
+    Funktioniert auch, wenn tag ohne Namespace übergeben wird!
     """
     start = max(0, position - window)
     end = min(len(xml), position + window)
     snippet = xml[start:end]
 
-    # Verschiedene mögliche Schreibweisen für das Tag
-    tagname = tag.split(":")[-1]  # Nur der Tag-Name
+    tagname = tag.split(":")[-1]
+    # akzeptiere optional Namespace-Prefix!
+    # 1. Gefülltes Tag
     pattern_full = re.compile(
         fr'<([a-zA-Z0-9]+:)?{tagname}\s*>\s*{re.escape(old_value)}\s*</([a-zA-Z0-9]+:)?{tagname}\s*>'
     )
+    # 2. Leeres Tag
     pattern_empty = re.compile(
         fr'<([a-zA-Z0-9]+:)?{tagname}\s*>\s*</([a-zA-Z0-9]+:)?{tagname}\s*>'
     )
+    # 3. Self-Closing
     pattern_selfclose = re.compile(
         fr'<([a-zA-Z0-9]+:)?{tagname}\s*/>'
     )
 
-    # 1. Versuche mit Wert
-    m = pattern_full.search(snippet)
-    if m:
-        rel_start = m.start()
-        rel_end = m.end()
-        before = snippet[:rel_start]
-        after = snippet[rel_end:]
-        prefix = m.group(1) or m.group(2) or ''
-        new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
-        xml = xml[:start] + before + new_tag + after + xml[end:]
-        print(f"Ersetzt gefülltes <{tag}> in Fenster: {new_tag}")
-        return xml
-
-    # 2. Versuche leeres Tag
+    # Reihenfolge: 1. gefüllt (exakt), 2. leer, 3. selfclose
+    if old_value != "":
+        m = pattern_full.search(snippet)
+        if m:
+            prefix = m.group(1) or m.group(2) or ''
+            rel_start = m.start()
+            rel_end = m.end()
+            new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
+            new_xml = xml[:start] + snippet[:rel_start] + new_tag + snippet[rel_end:] + xml[end:]
+            print(f"[Window-Replace] <{tagname}>{old_value}</{tagname}> → <{tagname}>{new_value}</{tagname}> (mit Prefix: {prefix})")
+            return new_xml
+    # Falls altwert leer oder vorher nicht gefunden: leeres Tag ersetzen
     m = pattern_empty.search(snippet)
     if m:
+        prefix = m.group(1) or m.group(2) or ''
         rel_start = m.start()
         rel_end = m.end()
-        before = snippet[:rel_start]
-        after = snippet[rel_end:]
-        prefix = m.group(1) or m.group(2) or ''
         new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
-        xml = xml[:start] + before + new_tag + after + xml[end:]
-        print(f"Ersetzt leeres <{tag}> in Fenster: {new_tag}")
-        return xml
-
-    # 3. Versuche Self-Closing Tag
+        new_xml = xml[:start] + snippet[:rel_start] + new_tag + snippet[rel_end:] + xml[end:]
+        print(f"[Window-Replace] Leeres <{tagname}></{tagname}> → <{tagname}>{new_value}</{tagname}> (mit Prefix: {prefix})")
+        return new_xml
+    # Oder self-closing
     m = pattern_selfclose.search(snippet)
     if m:
+        prefix = m.group(1) or ''
         rel_start = m.start()
         rel_end = m.end()
-        before = snippet[:rel_start]
-        after = snippet[rel_end:]
-        prefix = m.group(1) or ''
         new_tag = f"<{prefix}{tagname}>{new_value}</{prefix}{tagname}>"
-        xml = xml[:start] + before + new_tag + after + xml[end:]
-        print(f"Ersetzt Self-Closing <{tag}/> in Fenster: {new_tag}")
-        return xml
+        new_xml = xml[:start] + snippet[:rel_start] + new_tag + snippet[rel_end:] + xml[end:]
+        print(f"[Window-Replace] Selfclose <{tagname}/> → <{tagname}>{new_value}</{tagname}> (mit Prefix: {prefix})")
+        return new_xml
 
-    print(f"Kein zu ersetzendes <{tag}> mit Wert '{old_value}' oder leer im Kontextfenster gefunden!")
+    print(f"[Window-Replace] Nichts ersetzt für <{tagname}> ({old_value!r}) im Kontext!")
     return xml
+
 
 def replace_all_empty_tags(xml, corrections):
     print("==> Corrections:", corrections)  # <-- HIER!
