@@ -634,7 +634,9 @@ def download_corrected():
             replacements = json.loads(request.form.get("replacements", "[]"))
         except Exception:
             replacements = []
-        original_xml = request.form.get("xml_data")
+        original_xml = request.form.get("xml_data") or request.form.get("xml")
+    if not original_xml:
+        return "❌ Kein XML übertragen! Bitte prüfe das Formular.", 400
 
     # ab hier: KEIN data.get mehr!
     corrected_xml = replace_category_codes(original_xml, replacements)
