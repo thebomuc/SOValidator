@@ -89,7 +89,7 @@
         {% endif %}
         {% if codelist_table %}
         <form method="POST" action="/download_corrected" style="margin-top:1em;">
-            <textarea name="xml_data" style="display:none;">{{ original_xml|default('')|e }}</textarea>
+            <input type="hidden" name="xml" value="{{ original_xml|default('')|e }}">
             <table>
                 <thead>
                     <tr>
