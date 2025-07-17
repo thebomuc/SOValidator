@@ -672,6 +672,10 @@ def download_corrected():
                         )
                         found = True
                         break
+                print("Prüfe Tag:", tag, "| old:", old_value, "| new:", new_value)
+                print("Gefunden im XML:")
+                for m in regex.finditer(corrected_xml):
+                    print(f"  Wert: {m.group(2)} | start: {m.start(2)}")
                 if not found and old_value == "":
                     # Self-closing Tag (<ram:XYZ/>)
                     regex2 = re.compile(fr"<([a-zA-Z0-9]+:)?{tagname}\s*/>")
