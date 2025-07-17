@@ -622,6 +622,7 @@ def correct_xml_endpoint():
 
 @app.route("/download_corrected", methods=["POST"])
 def download_corrected():
+    # Stelle sicher, dass data immer definiert ist!
     if request.is_json:
         data = request.get_json()
         corrections = data.get("corrections", [])
@@ -629,7 +630,12 @@ def download_corrected():
         original_xml = data.get("xml")
     else:
         corrections = request.form.getlist("corrections")
-        replacements = request.form.getlist("replacements")
+        # Wenn "replacements" komplex (z.B. JSON), ggf. vorher im JS serialisieren und hier laden:
+        import json
+        try:
+            replacements = json.loads(request.form.get("replacements", "[]"))
+        except Exception:
+            replacements = []
         original_xml = request.form.get("xml")
     replacements = data.get("replacements", [])  # [{ "index": x, "new_value": "S" }, ...]
     corrections = data.get("corrections", [])    # alte correction-Strings (z.B. für CountryID)
