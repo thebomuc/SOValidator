@@ -941,7 +941,7 @@ def index():
                                 closest_match = get_close_matches(value, allowed_set, n=1, cutoff=0.6)
 
                             dropdown_html = f'<label>→ Möglicherweise meinten Sie: '
-                            dropdown_html += f'<select name="correction">'
+                            dropdown_html += f'<select name="corrections">'
                             for option in sorted_options:
                                 selected = 'selected' if closest_match and option == closest_match[0] else ''
                                 dropdown_html += (
